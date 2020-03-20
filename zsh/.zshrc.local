@@ -1,0 +1,177 @@
+# Aliases
+alias vim='mvim -v'
+alias rm='echo "Foce add option -i. (**Warning** addtional -f will override this)";rm -i'
+
+# Open file with sublime text
+# fsubl() {
+#  local out file key
+#  IFS=$'\n' out=($(fzf-tmux --query="$1" --exit-0 --expect=ctrl-o,ctrl-e))
+#  key=$(head -1 <<< "$out")
+#  file=$(head -2 <<< "$out" | tail -1)
+#  if [ -n "$file" ]; then
+#    [ "$key" = ctrl-o ] && open "$file" || ${EDITOR:-subl} "$file"
+#  fi
+#}
+
+# Homebrew
+# Install (one or multiple) selected application(s)
+# using "brew search" as source input
+# mnemonic [B]rew [I]nstall [P]lugin
+bip() {
+  local inst=$(brew search | fzf -m)
+
+  if [[ $inst ]]; then
+    for prog in $(echo $inst);
+    do; brew install $prog; done;
+  fi
+}
+
+# Update (one or multiple) selected application(s)
+# mnemonic [B]rew [U]pdate [P]lugin
+bup() {
+  local upd=$(brew leaves | fzf -m)
+
+  if [[ $upd ]]; then
+    for prog in $(echo $upd);
+    do; brew upgrade $prog; done;
+  fi
+}
+
+# Delete (one or multiple) selected application(s)
+# mnemonic [B]rew [C]lean [P]lugin (e.g. uninstall)
+bcp() {
+  local uninst=$(brew leaves | fzf -m)
+
+  if [[ $uninst ]]; then
+    for prog in $(echo $uninst);
+    do; brew uninstall $prog; done;
+  fi
+}
+
+# Install or open the webpage for the selected application
+# using brew cask search as input source
+# and display a info quickview window for the currently marked application
+bci() {
+    local token
+    token=$(brew search --casks | fzf-tmux --query="$1" +m --preview 'brew cask info {}')
+
+    if [ "x$token" != "x" ]
+    then
+        echo "(I)nstall or open the (h)omepage of $token"
+        read input
+        if [ $input = "i" ] || [ $input = "I" ]; then
+            brew cask install $token
+        fi
+        if [ $input = "h" ] || [ $input = "H" ]; then
+            brew cask home $token
+        fi
+    fi
+}
+
+# Uninstall or open the webpage for the selected application
+# using brew list as input source (all brew cask installed applications)
+# and display a info quickview window for the currently marked application
+bcui() {
+    local token
+    token=$(brew cask list | fzf-tmux --query="$1" +m --preview 'brew cask info {}')
+
+    if [ "x$token" != "x" ]
+    then
+        echo "(U)ninstall or open the (h)omepage of $token"
+        read input
+        if [ $input = "u" ] || [ $input = "U" ]; then
+            brew cask uninstall $token
+        fi
+        if [ $input = "h" ] || [ $token = "h" ]; then
+            brew cask home $token
+        fi
+    fi
+}
+
+# Change directory
+# Not including hidden directories
+fcd() {
+  local dir=$(find * -maxdepth 0 -type d -print 2> /dev/null | fzf-tmux) \
+    && cd "$dir"
+}
+
+# Including the hidden directories
+fcda() {
+  local dir=$(find ${1:-.} -maxdepth 1 -type d -print 2> /dev/null | fzf-tmux) \
+    && cd "$dir"
+}
+
+# Trash commands
+rmtrash() {
+  mv $@ ~/.Trash/
+}
+
+untrash() {
+  local trash=$(trash -l | fzf-tmux) && mv -i "$trash" ./
+}
+
+# Git commands
+inside_work_tree() { git rev-parse --is-inside-work-tree >/dev/null; }
+
+# Log all
+gla() {
+ # param validation
+  if [[ ! `git log -n 1 $@ | head -n 1` ]] ;then
+    return
+  fi
+
+  # filter by file string
+  local filter
+  # param existed, git log for file if existed
+  if [ -n $@ ] && [ -f $@ ]; then
+    filter="-- $@"
+  fi
+
+  # git command
+  local gitlog=(
+    git log
+    --all
+    --decorate
+    --graph 
+    --color=always
+    --abbrev=7
+    # --format='%C(auto)%h %an %C(blue)%s %C(yellow)%cr'
+    --format='%C(bold blue)%h %C(auto) %an %C(bold cyan)%s %C(auto)%d %C(bold yellow)%cr'
+    $@
+  )
+
+  # fzf command
+  local fzf=(
+    fzf
+    --ansi --no-sort --reverse --tiebreak=index
+    --preview "f() { set -- \$(echo -- \$@ | grep -o '[a-f0-9]\{7\}'); [ \$# -eq 0 ] || git show --name-status --color=always \$1 $filter; }; f {}"
+    --bind "ctrl-q:abort,ctrl-m:execute:
+                (grep -o '[a-f0-9]\{7\}' | head -1 |
+                xargs -I % sh -c 'git show --color=always % $filter | less -R') << 'FZF-EOF'
+                {}
+                FZF-EOF"
+   --preview-window=right:50% \
+   --height 60%
+  )
+
+  # piping them
+  $gitlog | $fzf
+}
+
+# Delete branch
+gdb() {
+  local branches=$(git branch | sed "s/.* //" | fzf-tmux) 
+  git branch -d "$branches"
+}
+
+# Checkout branch
+gcob() {
+  local branches=$(git branch | sed "s/.* //" | fzf-tmux)
+  git checkout "$branches"
+}
+
+# Checkout remote branch
+gcorb() {
+  local branches=$(git branch -r | sed "s/.* //" | fzf-tmux) 
+  git checkout --track "$branches"
+}
