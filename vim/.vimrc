@@ -88,6 +88,7 @@ let g:ctrlp_match_window='order:ttb,max:20'
 let g:NERDSpaceDelims=1
 let g:gitgutter_enabled=0
 let g:airline_theme='base16_gruvbox_dark_hard'
+let g:gruvbox_contrast_dark='hard'
 
 " Use The Silver Searcher https://github.com/ggreer/the_silver_searcher
 if executable('ag')
