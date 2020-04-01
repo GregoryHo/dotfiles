@@ -322,3 +322,5 @@ export FZF_ALT_C_OPTS="--preview 'tree -C {} | head -200'"
 
 # Load local source
 [ -f ~/.zshrc.local ] && source ~/.zshrc.local
+
+neofetch
