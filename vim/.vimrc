@@ -95,6 +95,7 @@ let g:gruvbox_contrast_dark='hard'
 let g:coc_global_extensions=[
   \ 'coc-tsserver',
   \ 'coc-eslint',
+  \ 'coc-java',
   \ 'coc-json'
   \ ]
 
