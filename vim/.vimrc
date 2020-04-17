@@ -44,14 +44,10 @@ set shiftwidth=2                                             " normal mode inden
 set showcmd
 set smartcase                                                " case-sensitive search if any caps
 set softtabstop=2                                            " insert mode tab and backspace use 2 spaces
-set tabstop=2                                                " actual tabs occupy 8 characters
+set tabstop=2                                                " actual tabs occupy 2 characters
 set wildignore=log/**,node_modules/**,target/**,tmp/**,*.rbc
 set wildmenu                                                 " show a navigable menu for tab completion
 set wildmode=longest,list,full
-set number relativenumber                                    " hybrid line numbers on
-set nu rnu                                                   " hybrid line numbers on
-"set cursorcolumn
-set cursorline
 
 
 " Enable basic mouse behavior such as resizing buffers.
@@ -77,12 +73,6 @@ nnoremap <leader>] :TagbarToggle<CR>
 nnoremap <leader><space> :call whitespace#strip_trailing()<CR>
 nnoremap <leader>g :GitGutterToggle<CR>
 noremap <silent> <leader>V :source ~/.vimrc<CR>:filetype detect<CR>:exe ":echo 'vimrc reloaded'"<CR>
-inoremap ( ()<Esc>i
-inoremap " ""<Esc>i
-inoremap ' ''<Esc>i
-inoremap [ []<Esc>i
-inoremap {<CR> {<CR>}<Esc>ko
-inoremap {{ {}<ESC>i
 
 " in case you forgot to sudo
 cnoremap w!! %!sudo tee > /dev/null %
@@ -131,3 +121,17 @@ vnoremap p "_dP
 " Colors
 set background=dark
 colorscheme gruvbox
+
+" Go crazy!
+if filereadable(expand("~/.vimrc.local"))
+  " In your .vimrc.local, you might like:
+  "
+  " set autowrite
+  " set nocursorline
+  " set nowritebackup
+  " set whichwrap+=<,>,h,l,[,] " Wrap arrow keys between lines
+  "
+  " autocmd! bufwritepost .vimrc source ~/.vimrc
+  " noremap! jj <ESC>
+  source ~/.vimrc.local
+endif
