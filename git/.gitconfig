@@ -10,6 +10,10 @@
 	excludesfile = .gitignore_global
 	editor = vim
 	whitespace = tabwidth=4, space-before-tab, indent-with-non-tab, blank-at-eol, blank-at-eof
+  pager = delta --plus-color="#012800" --minus-color="#340001" --theme='Monokai Extended'
+
+[interactive]
+  diffFilter = delta --color-only
 
 [color]
 	branch = auto
