@@ -8,7 +8,7 @@ export ZSH=/Users/gregho/.oh-my-zsh
 # Set name of the theme to load. Optionally, if you set this to "random"
 # it'll load a random theme each time that oh-my-zsh is loaded.
 # See https://github.com/robbyrussell/oh-my-zsh/wiki/Themes
-ZSH_THEME="powerlevel9k/powerlevel9k"
+ZSH_THEME="powerlevel10k/powerlevel10k"
 # BASE
 # ===========================================================
 POWERLEVEL9K_MODE='nerdfont-complete'
@@ -20,8 +20,10 @@ POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=('battery' 'time' 'root_indicator' 'dir' 'dir_
 POWERLEVEL9K_LEFT_SEGMENT_SEPARATOR='>'
 POWERLEVEL9K_LEFT_SUBSEGMENT_SEPARATOR='>'
 POWERLEVEL9K_WHITESPACE_BETWEEN_LEFT_SEGMENTS=' '
-POWERLEVEL9K_MULTILINE_FIRST_PROMPT_PREFIX="%F{blue}\u256D\u2500%F{white}"
-POWERLEVEL9K_MULTILINE_LAST_PROMPT_PREFIX="%F{blue}\u2570\uf460%F{white} "
+# POWERLEVEL9K_MULTILINE_FIRST_PROMPT_PREFIX="%F{blue}\u256D\u2500%F{white}"
+POWERLEVEL9K_MULTILINE_FIRST_PROMPT_PREFIX="%F{014}\u256D%F{cyan}\u2500%F{white}"
+# POWERLEVEL9K_MULTILINE_LAST_PROMPT_PREFIX="%F{blue}\u2570\uf460%F{white} "
+POWERLEVEL9K_MULTILINE_LAST_PROMPT_PREFIX="%F{014}\u2570%F{cyan}\uF460%F{073}\uF460%F{109}\uF460%F{white} "
 
 # battery
 POWERLEVEL9K_BATTERY_LOW_BACKGROUND='none'
@@ -38,8 +40,9 @@ POWERLEVEL9K_BATTERY_STAGES=''
 
 # time
 # POWERLEVEL9K_TIME_FORMAT="%D{%H:%M} %F{003}\uF017"
-POWERLEVEL9K_TIME_FORMAT="%F{cyan}\uF017 %F{007}%D{%y/%m/%d %H:%M:%S}"
+# POWERLEVEL9K_TIME_FORMAT="%F{cyan}\uF017 %F{007}%D{%y/%m/%d %H:%M:%S}"
 # POWERLEVEL9K_TIME_ICON=''
+POWERLEVEL9K_TIME_FORMAT="%D{%H:%M \uf073 %d/%m/%y}"
 POWERLEVEL9K_TIME_BACKGROUND='none'
 POWERLEVEL9K_TIME_FOREGROUND='cyan'
 
