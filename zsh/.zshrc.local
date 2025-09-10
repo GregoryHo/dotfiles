@@ -1,6 +1,7 @@
 # Aliases
 alias vim='mvim -v'
 alias rm='echo "Foce add option -i. (**Warning** addtional -f will override this)";rm -i'
+# alias python=~/.pyenv/versions/2.7.18/bin/python  # Commented for ARM migration
 
 # Open file with sublime text
 # fsubl() {
@@ -164,6 +165,13 @@ gdb() {
   git branch -d "$branches"
 }
 
+# Delete branch with forceed
+gdfb() {
+  local branches=$(git branch | sed "s/.* //" | fzf-tmux) 
+  git branch -D "$branches"
+}
+
+
 # Checkout branch
 gcob() {
   local branches=$(git branch | sed "s/.* //" | fzf-tmux)
@@ -175,3 +183,28 @@ gcorb() {
   local branches=$(git branch -r | sed "s/.* //" | fzf-tmux) 
   git checkout --track "$branches"
 }
+
+# Auto use specify node version via nvmsrc
+autoload -U add-zsh-hook
+
+load-nvmrc() {
+  local nvmrc_path
+  nvmrc_path="$(nvm_find_nvmrc)"
+
+  if [ -n "$nvmrc_path" ]; then
+    local nvmrc_node_version
+    nvmrc_node_version=$(nvm version "$(cat "${nvmrc_path}")")
+
+    if [ "$nvmrc_node_version" = "N/A" ]; then
+      nvm install
+    elif [ "$nvmrc_node_version" != "$(nvm version)" ]; then
+      nvm use
+    fi
+  elif [ -n "$(PWD=$OLDPWD nvm_find_nvmrc)" ] && [ "$(nvm version)" != "$(nvm version default)" ]; then
+    echo "Reverting to nvm default version"
+    nvm use default
+  fi
+}
+
+add-zsh-hook chpwd load-nvmrc
+load-nvmrc

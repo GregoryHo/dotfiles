@@ -1,6 +1,6 @@
 [user]
 	name = gregory_ho
-	email = gregory_ho@paradise-soft.com.tw
+	email = gregory_ho@tengyuntech.com
 
 [credential]
 	helper = osxkeychain
@@ -10,7 +10,15 @@
 	excludesfile = .gitignore_global
 	editor = vim
 	whitespace = tabwidth=4, space-before-tab, indent-with-non-tab, blank-at-eol, blank-at-eof
-  pager = delta --plus-color="#012800" --minus-color="#340001" --theme='Monokai Extended'
+  pager = delta
+
+[delta]
+  true-color = always
+  theme = Monokai Extended
+  plus-style  = syntax "#012800"
+  minus-style = syntax "#340001"
+  plus-emph-style  = syntax bold "#012800"
+  minus-emph-style = syntax bold "#340001"
 
 [interactive]
   diffFilter = delta --color-only

@@ -36,7 +36,14 @@ POWERLEVEL9K_BATTERY_DISCONNECTED_BACKGROUND='none'
 POWERLEVEL9K_BATTERY_DISCONNECTED_FOREGROUND='003'
 POWERLEVEL9K_BATTERY_LOW_THRESHOLD=30
 POWERLEVEL9K_BATTERY_VERBOSE=false
-POWERLEVEL9K_BATTERY_STAGES=''
+# POWERLEVEL9K_BATTERY_STAGES=''
+POWERLEVEL9K_BATTERY_STAGES=(
+  $'\uF244'  #  empty
+  $'\uF243'  #  low
+  $'\uF242'  #  medium
+  $'\uF241'  #  high
+  $'\uF240'  #  full
+)
 
 # time
 # POWERLEVEL9K_TIME_FORMAT="%D{%H:%M} %F{003}\uF017"
@@ -327,3 +334,9 @@ export FZF_ALT_C_OPTS="--preview 'tree -C {} | head -200'"
 [ -f ~/.zshrc.local ] && source ~/.zshrc.local
 
 neofetch
+eval "$(rbenv init - zsh)"
+# The following lines have been added by Docker Desktop to enable Docker CLI completions.
+fpath=(/Users/gregho/.docker/completions $fpath)
+autoload -Uz compinit
+compinit
+# End of Docker CLI completions

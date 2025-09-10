@@ -1,7 +1,13 @@
 set number relativenumber                                    " hybrid line numbers on
 set nu rnu                                                   " hybrid line numbers on
-"set cursorcolumn
+" set cursorcolumn
 set cursorline
+
+"---------
+" Window
+"---------
+nmap sh :split<Return><C-w>w
+nmap sv :vsplit<Return><C-w>w
 
 " keyboard shortcuts
 inoremap jj <ESC>
@@ -13,8 +19,8 @@ inoremap jj <ESC>
 " inoremap {{ {}<ESC>i
 
 " highlight search
-"set hlsearch
-"nmap <leader>hl :let @/ = ""<CR>
+" set hlsearch
+" nmap <leader>hl :let @/ = ""<CR>
 
 " Disambiguate ,a & ,t from the Align plugin, making them fast again.
 "
