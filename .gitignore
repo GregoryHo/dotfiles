@@ -1,1 +1,4 @@
 .netrwhist
+
+# Local configuration files (contain sensitive tokens/secrets)
+*.local
