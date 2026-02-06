@@ -9,6 +9,9 @@ compinit
 export LANG="${LANG:-en_US.UTF-8}"
 export LC_CTYPE="${LC_CTYPE:-en_US.UTF-8}"
 
+# Shared environment source of truth (required for non-login zsh shells).
+[ -f "$HOME/GitHub/dotfiles/shell/.env.shared.sh" ] && . "$HOME/GitHub/dotfiles/shell/.env.shared.sh"
+
 # tmu support 256 color
 export TERM="xterm-256color"
 
@@ -364,8 +367,6 @@ alias ff='fastfetch'
 eval "$(rbenv init - zsh)"
 # Docker Desktop CLI completions.
 fpath=(/Users/gregho/.docker/completions $fpath)
-
-. "$HOME/.local/bin/env"
 
 # GVM disabled - causing cd slowdown
 # [[ -s "/Users/gregho/.gvm/scripts/gvm" ]] && source "/Users/gregho/.gvm/scripts/gvm"

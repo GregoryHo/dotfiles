@@ -423,6 +423,14 @@ bind-key O display-popup -E -w 90% -h 85% "$SHELL -lic 'ao'"
 # prefix + G: Google (ag)
 bind-key G display-popup -E -w 90% -h 85% "$SHELL -lic 'ag'"
 
+# Resume mode (native provider resume, no fzf)
+# prefix + R then A/O/G
+bind-key R switch-client -T agent_resume \; display-message "resume> A=Claude O=Codex G=Gemini Esc=cancel"
+bind-key -T agent_resume Escape switch-client -T prefix
+bind-key -T agent_resume A switch-client -T prefix \; display-popup -E -w 90% -h 85% "$SHELL -lic 'aar'"
+bind-key -T agent_resume O switch-client -T prefix \; display-popup -E -w 90% -h 85% "$SHELL -lic 'aor'"
+bind-key -T agent_resume G switch-client -T prefix \; display-popup -E -w 90% -h 85% "$SHELL -lic 'agr'"
+
 # -- Window
 bind-key -n C-S-Left swap-window -t -1 \; previous-window
 bind-key -n C-S-Right swap-window -t +1 \; next-window

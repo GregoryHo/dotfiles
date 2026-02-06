@@ -1,6 +1,12 @@
 # Shared login-shell environment for zsh/bash.
 # Keep this file shell-agnostic and focused on exports/bootstrap only.
 
+# Prevent duplicate exports when multiple startup files source this script.
+if [ -n "${DOTFILES_ENV_SHARED_LOADED:-}" ]; then
+  return 0
+fi
+export DOTFILES_ENV_SHARED_LOADED=1
+
 # Core PATH
 export PATH="/opt/homebrew/bin:$PATH"
 export PATH="$PATH:/usr/local/bin"
