@@ -4,113 +4,97 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a personal dotfiles repository containing modular configuration files for a macOS development environment. Each tool has its own directory with core configuration files and optional `.local` override files for machine-specific customizations.
+Personal dotfiles for a macOS (ARM) development environment. Each tool owns a directory with base configs and optional `.local` override files for machine-specific customization. `.local` files are gitignored and may contain secrets.
 
-### Directory Structure
+## Validation
 
-- `bash/` - Bash shell configuration and environment setup
-- `zsh/` - Zsh shell with Oh My Zsh and PowerLevel10k theme
-- `vim/` - Vim editor with vim-plug plugin manager and CoC LSP
-- `git/` - Git configuration with Delta pager and custom color schemes  
-- `tmux/` - Tmux terminal multiplexer with Oh My Tmux base configuration
-- `fzf/` - FZF fuzzy finder with custom Solarized color scheme
-- `config/` - System-level configurations (Karabiner, Neofetch)
-
-## Key Architecture Patterns
-
-### Configuration Override System
-Most tools follow a pattern where:
-- Base configuration is in the main dotfile (e.g., `.vimrc`, `.zshrc`)
-- Machine-specific overrides go in `.local` files (e.g., `.vimrc.local`, `.zshrc.local`)
-- This allows shared base configs while accommodating different environments
-
-### Shell Environment Chain
-The shell environment loads in this order:
-1. `bash/.bash_profile` - Core environment variables and PATH setup
-2. `zsh/.zshrc` - Zsh-specific configuration (sources bash_profile)
-3. `zsh/.zshrc.local` - Machine-specific Zsh overrides
-
-## Development Environment
-
-### Core Tools Setup
-- **Homebrew**: Configured with Tsinghua University mirrors for faster downloads in China
-- **Node.js**: Managed via NVM with completion support
-- **Python**: Managed via PyEnv (ARM Homebrew version)
-- **Ruby**: Managed via RBenv (ARM Homebrew version)
-- **Java**: OpenJDK 17 configured as JAVA_HOME
-- **Go**: GOPATH and binaries in user's go directory
-- **Android**: Full SDK setup with emulator and NDK paths
-- **Flutter**: Added to PATH for mobile development
-
-### Key Environment Variables
 ```bash
-ANDROID_HOME=/Users/$USER/Library/Android/sdk
-JAVA_HOME=/Library/Java/JavaVirtualMachines/openjdk-17.jdk/Contents/Home/
-GOPATH=/Users/$USER/go
+shell/test-shell-startup.sh   # Verify shared-env sourcing, guards, and idempotency
 ```
 
-## Tool-Specific Configuration
+There is no build system, linter, or test framework beyond this script. Run it after any change to shell startup files.
 
-### Zsh + Oh My Zsh
-- **Theme**: PowerLevel10k with custom prompt segments (battery, time, directory, git status)
-- **Plugins**: zsh-syntax-highlighting, docker, git, nvm, node, npm, kubectl, minikube, tmux, react-native
-- **Features**: Auto-start tmux, custom history settings, FZF integration
-- **Colors**: Custom Solarized-based theme throughout
+## Shell Environment Architecture
 
-### Vim Configuration
-- **Plugin Manager**: vim-plug (located in `~/.vim/bundle/`)
-- **Plugin Loading**: Bundles defined in `.vimrc.bundles`, local additions in `.vimrc.bundles.local`
-- **LSP Support**: CoC (Conquer of Completion) for modern IDE features
-- **Key Plugins**: NERDTree, fugitive, syntastic, vim-tmux-navigator, gitgutter
-- **Settings**: 2-space indentation, line numbers, system clipboard integration
+All shared exports (PATH, Homebrew mirrors, Android, Java, Go, Flutter, Cargo) live in a single source of truth:
 
-### Git Configuration
-- **Pager**: Delta with Monokai Extended theme for enhanced diffs
-- **User**: gregory_ho@tengyuntech.com
-- **Editor**: Vim as default
-- **Colors**: Custom color schemes for branches, diffs, and status
-- **Global Ignore**: Uses `.gitignore_global`
+```
+shell/.env.shared.sh          # Idempotent (DOTFILES_ENV_SHARED_LOADED guard)
+```
 
-### Tmux Setup
-- **Base**: Oh My Tmux configuration framework
-- **Overrides**: Local customizations in `.tmux.conf.local`
-- **Features**: 256-color support, GNU Screen compatible prefix (C-a)
-- **Integration**: Auto-start via Zsh plugin, vim navigator support
+Every shell startup file sources it with an existence guard:
 
-### FZF Integration  
-- **Color Scheme**: Custom Solarized Dark theme
-- **Trigger**: `~~` instead of default `**`
-- **Backend**: Uses `fd` for file searching instead of find
-- **Bindings**: Custom preview bindings for file exploration
-- **Commands**: Enhanced CTRL-T and ALT-C with previews
+```
+zsh/.zprofile      ─┐
+zsh/.zshrc         ─┤── all source shell/.env.shared.sh
+bash/.bash_profile ─┤
+bash/.bashrc       ─┘
+```
 
-## Common Workflows
+This ensures both login and non-login shells (zsh and bash) get the same environment. The load order is:
 
-### Making Configuration Changes
-1. Edit base configuration files for universal changes
-2. Use `.local` files for machine-specific modifications
-3. Source or restart shell to apply changes
-4. For vim plugins: edit `.vimrc.bundles.local`, run `:PlugInstall`
+1. `shell/.env.shared.sh` - exports and bootstrap only, no aliases/functions
+2. `zsh/.zprofile` / `bash/.bash_profile` - login-shell init (version managers, local overrides)
+3. `zsh/.zshrc` / `bash/.bashrc` - interactive config (Oh My Zsh, FZF, lazy loading, aliases)
+4. `zsh/.zshrc.local` / `bash/.bash_profile.local` - machine-specific (gitignored)
 
-### Environment Management
-- Node versions: `nvm use <version>` or `nvm install <version>`
-- Python versions: `pyenv global <version>` or `pyenv local <version>`
-- Ruby versions: `rbenv global <version>` or `rbenv local <version>`
+### Rules When Editing Shell Files
 
-### Development Setup on New Machine
-1. Clone this repository
-2. Create symbolic links from home directory to these dotfiles
-3. Install required tools (Homebrew, Oh My Zsh, vim-plug, etc.)
-4. Create `.local` override files as needed
-5. Source shell configuration or restart terminal
+- **Never duplicate shared exports** in shell-specific files. Add them to `shell/.env.shared.sh`.
+- **Guard optional sources** with `[ -f "..." ] && . "..."` — never source a file unconditionally.
+- **Keep `.env.shared.sh` idempotent** — sourcing it twice must not change PATH or variables.
+- Run `shell/test-shell-startup.sh` after changes to verify.
 
-## Security Notes
-- Contains API tokens/keys in bash/.bash_profile (JENKINS_TOKEN, NOTION_TOKEN, CONTEXT7_API_KEY)
-- These should be moved to `.local` files or environment-specific configuration
-- Karabiner configuration includes keyboard remapping rules
+## Configuration Override Pattern
 
-## Special Features
-- **Terminal**: Automatic tmux session management with iTerm2 integration
-- **Prompt**: Rich PowerLevel10k prompt with battery status, git info, and system load
-- **Search**: Comprehensive FZF setup with fd backend for fast file navigation
-- **System Info**: Neofetch automatically runs on shell startup for system overview
+Most tools follow: base config + `.local` override.
+
+| Tool  | Base                  | Local override           |
+|-------|-----------------------|--------------------------|
+| Zsh   | `zsh/.zshrc`          | `zsh/.zshrc.local`       |
+| Bash  | `bash/.bash_profile`  | `~/.bash_profile.local`  |
+| Vim   | `vim/.vimrc`          | `vim/.vimrc.local`       |
+| Vim plugins | `vim/.vimrc.bundles` | `vim/.vimrc.bundles.local` |
+| Tmux  | Oh My Tmux base       | `tmux/.tmux.conf.local`  |
+
+## FZF Helper Pattern
+
+All fzf-based interactive pickers in `zsh/.zshrc.local` share a common UI via:
+
+- `dot_fzf_ui()` — wrapper that sets consistent fzf flags (height, border, reverse, highlight-line)
+- `dot_require_fzf()` — guard that errors if fzf is missing
+
+Every picker function uses tab-delimited rows where column 1 is the machine-readable key and column 2+ is the display. They use `--delimiter=$'\t' --with-nth=2` and pipe through `cut -f1` to extract the selection. When adding new pickers, follow this same pattern.
+
+Helper functions that produce picker rows are prefixed `dot_` (e.g., `dot_git_local_branch_rows`, `dot_tmux_session_rows`, `dot_wt_rows`).
+
+## Key Function Groups (in zsh/.zshrc.local)
+
+**Brew**: `bip` (install), `bup` (upgrade), `bcp` (uninstall), `bci`/`bcui` (cask install/uninstall with preview)
+
+**Git**: `gla` (interactive log), `gcob`/`gcorb` (checkout local/remote branch), `gdb`/`gdfb` (delete branch safe/force)
+
+**Worktree** (`wt*`): `wta` (add), `wtab` (add from branch picker), `wtr` (remove), `wtg` (go), `wtb` (go to base), `wtm` (merge), `wtc` (add + env init + launch agent). Worktrees go in `.worktrees/` inside the project root.
+
+**Tmux** (`t*`): `tl` (list sessions), `tx` (create/attach), `ts` (fzf session switch), `tk` (kill), `tsw` (window switch), `tw` (expand workspace: editor/agent/test/logs windows), `tsp` (pane switch)
+
+**AI Agents**: `aa` (Claude), `ao` (Codex), `ag` (Gemini), with resume variants `aar`/`aor`/`agr`. All go through `dot_agent_cmd` wrapper. Tmux popup bindings: `prefix+A/O/G` to launch, `prefix+R` then `A/O/G` to resume.
+
+## NVM Lazy Loading
+
+In zsh, `nvm`/`node`/`npm`/`npx` are stub functions that self-replace on first call via `_nvm_lazy_load()`. The Oh My Zsh nvm/node/npm plugins are disabled in favor of this. The `load-nvmrc` chpwd hook auto-switches node versions based on `.nvmrc` files.
+
+## Tmux
+
+- Base framework: Oh My Tmux (`.tmux.conf` from gpakosz)
+- All local overrides in `tmux/.tmux.conf.local`
+- Theme: tmux-power with Everforest palette (built-in Oh My Tmux theme disabled)
+- Plugins via tpm: tmux-resurrect, tmux-continuum, tmux-power
+- Mouse on, vi mode keys, prefix is C-a (GNU Screen compatible)
+- Plugin auto-update on launch/reload is disabled for faster startup
+
+## Vim
+
+- Plugin manager: vim-plug (bundles in `vim/.vimrc.bundles`, local additions in `.vimrc.bundles.local`)
+- LSP: CoC (Conquer of Completion) with settings in `vim/coc-settings.json`
+- 2-space indentation, system clipboard integration

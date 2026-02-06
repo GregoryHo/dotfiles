@@ -15,91 +15,152 @@ alias rm='echo "Foce add option -i. (**Warning** addtional -f will override this
 #}
 
 # Homebrew
+# Shared fzf UI defaults for shell pickers
+dot_fzf_ui() {
+  fzf --height=55% --reverse --border --info=inline-right --highlight-line "$@"
+}
+
 # Install (one or multiple) selected application(s)
 # using "brew search" as source input
 # mnemonic [B]rew [I]nstall [P]lugin
 bip() {
-  local inst=$(brew search | fzf -m)
+  dot_require_fzf || return 1
+  local selected prog
+  selected="$(
+    brew search |
+      dot_fzf_ui -m --prompt='brew install> ' --header='select package(s)'
+  )" || return
+  [[ -z "$selected" ]] && return
 
-  if [[ $inst ]]; then
-    for prog in $(echo $inst);
-    do; brew install $prog; done;
-  fi
+  while IFS= read -r prog; do
+    [[ -n "$prog" ]] && brew install "$prog"
+  done <<< "$selected"
 }
 
 # Update (one or multiple) selected application(s)
 # mnemonic [B]rew [U]pdate [P]lugin
 bup() {
-  local upd=$(brew leaves | fzf -m)
+  dot_require_fzf || return 1
+  local selected prog
+  selected="$(
+    brew leaves |
+      dot_fzf_ui -m --prompt='brew upgrade> ' --header='select package(s)'
+  )" || return
+  [[ -z "$selected" ]] && return
 
-  if [[ $upd ]]; then
-    for prog in $(echo $upd);
-    do; brew upgrade $prog; done;
-  fi
+  while IFS= read -r prog; do
+    [[ -n "$prog" ]] && brew upgrade "$prog"
+  done <<< "$selected"
 }
 
 # Delete (one or multiple) selected application(s)
 # mnemonic [B]rew [C]lean [P]lugin (e.g. uninstall)
 bcp() {
-  local uninst=$(brew leaves | fzf -m)
+  dot_require_fzf || return 1
+  local selected prog
+  selected="$(
+    brew leaves |
+      dot_fzf_ui -m --prompt='brew uninstall> ' --header='select package(s)'
+  )" || return
+  [[ -z "$selected" ]] && return
 
-  if [[ $uninst ]]; then
-    for prog in $(echo $uninst);
-    do; brew uninstall $prog; done;
-  fi
+  while IFS= read -r prog; do
+    [[ -n "$prog" ]] && brew uninstall "$prog"
+  done <<< "$selected"
 }
 
 # Install or open the webpage for the selected application
 # using brew cask search as input source
 # and display a info quickview window for the currently marked application
 bci() {
-    local token
-    token=$(brew search --casks | fzf-tmux --query="$1" +m --preview 'brew cask info {}')
+  dot_require_fzf || return 1
+  local out key token
+  out="$(
+    brew search --casks |
+      dot_fzf_ui --query="$1" --expect=enter,alt-h \
+        --prompt='cask install/home> ' \
+        --header='enter=install  alt-h=homepage' \
+        --preview 'brew info --cask {}'
+  )" || return
 
-    if [ "x$token" != "x" ]
-    then
-        echo "(I)nstall or open the (h)omepage of $token"
-        read input
-        if [ $input = "i" ] || [ $input = "I" ]; then
-            brew cask install $token
-        fi
-        if [ $input = "h" ] || [ $input = "H" ]; then
-            brew cask home $token
-        fi
-    fi
+  key="$(printf '%s\n' "$out" | sed -n '1p')"
+  token="$(printf '%s\n' "$out" | sed -n '2p')"
+  [[ -z "$token" ]] && return
+
+  case "$key" in
+    alt-h) brew home "$token" ;;
+    *) brew install --cask "$token" ;;
+  esac
 }
 
 # Uninstall or open the webpage for the selected application
 # using brew list as input source (all brew cask installed applications)
 # and display a info quickview window for the currently marked application
 bcui() {
-    local token
-    token=$(brew cask list | fzf-tmux --query="$1" +m --preview 'brew cask info {}')
+  dot_require_fzf || return 1
+  local out key token
+  out="$(
+    brew list --cask |
+      dot_fzf_ui --query="$1" --expect=enter,alt-h \
+        --prompt='cask uninstall/home> ' \
+        --header='enter=uninstall  alt-h=homepage' \
+        --preview 'brew info --cask {}'
+  )" || return
 
-    if [ "x$token" != "x" ]
-    then
-        echo "(U)ninstall or open the (h)omepage of $token"
-        read input
-        if [ $input = "u" ] || [ $input = "U" ]; then
-            brew cask uninstall $token
-        fi
-        if [ $input = "h" ] || [ $token = "h" ]; then
-            brew cask home $token
-        fi
-    fi
+  key="$(printf '%s\n' "$out" | sed -n '1p')"
+  token="$(printf '%s\n' "$out" | sed -n '2p')"
+  [[ -z "$token" ]] && return
+
+  case "$key" in
+    alt-h) brew home "$token" ;;
+    *) brew uninstall --cask "$token" ;;
+  esac
 }
 
 # Change directory
 # Not including hidden directories
 fcd() {
-  local dir=$(find * -maxdepth 0 -type d -print 2> /dev/null | fzf-tmux) \
-    && cd "$dir"
+  dot_require_fzf || return 1
+  local rows dir
+  rows="$(
+    find . -mindepth 1 -maxdepth 1 -type d ! -name '.*' -print 2>/dev/null |
+      while IFS= read -r d; do
+        clean="${d#./}"
+        printf '%s\t%-24s %s\n' "$d" "$clean" "$clean"
+      done
+  )"
+  [[ -z "$rows" ]] && return
+
+  dir="$(
+    printf '%s\n' "$rows" |
+      dot_fzf_ui --prompt='cd> ' --delimiter=$'\t' --with-nth=2 \
+        --header='name                     path' |
+      cut -f1
+  )"
+  [[ -n "$dir" ]] && cd "$dir"
 }
 
 # Including the hidden directories
 fcda() {
-  local dir=$(find ${1:-.} -maxdepth 1 -type d -print 2> /dev/null | fzf-tmux) \
-    && cd "$dir"
+  dot_require_fzf || return 1
+  local base="${1:-.}" rows dir
+  rows="$(
+    find "$base" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null |
+      while IFS= read -r d; do
+        clean="${d#./}"
+        name="${clean##*/}"
+        printf '%s\t%-24s %s\n' "$d" "$name" "$clean"
+      done
+  )"
+  [[ -z "$rows" ]] && return
+
+  dir="$(
+    printf '%s\n' "$rows" |
+      dot_fzf_ui --prompt='cd all> ' --delimiter=$'\t' --with-nth=2 \
+        --header='name                     path' |
+      cut -f1
+  )"
+  [[ -n "$dir" ]] && cd "$dir"
 }
 
 # Trash commands
@@ -108,90 +169,199 @@ rmtrash() {
 }
 
 untrash() {
-  local trash=$(trash -l | fzf-tmux) && mv -i "$trash" ./
+  dot_require_fzf || return 1
+  local rows src
+  rows="$(
+    find "$HOME/.Trash" -mindepth 1 -maxdepth 1 -print 2>/dev/null |
+      while IFS= read -r p; do
+        name="${p##*/}"
+        printf '%s\t%-32s %s\n' "$p" "$name" "$p"
+      done
+  )"
+  [[ -z "$rows" ]] && { echo "Trash is empty."; return 1; }
+
+  src="$(
+    printf '%s\n' "$rows" |
+      dot_fzf_ui --prompt='untrash> ' --delimiter=$'\t' --with-nth=2 \
+        --header='name                              source path' |
+      cut -f1
+  )"
+  [[ -z "$src" ]] && return
+
+  mv -i -- "$src" ./
 }
 
 # Git commands
 inside_work_tree() { git rev-parse --is-inside-work-tree >/dev/null; }
 
+dot_git_local_branch_rows() {
+  git for-each-ref --sort=-committerdate refs/heads \
+    --format=$'%(refname:short)\t%(if)%(HEAD)%(then)*%(else) %(end)\t%(upstream:short)\t%(committerdate:relative)' |
+    awk -F'\t' '{
+      upstream=$3; if (upstream=="") upstream="-";
+      printf "%s\t%-2s %-28s %-24s %s\n", $1, $2, $1, upstream, $4
+    }'
+}
+
+dot_git_remote_branch_rows() {
+  git for-each-ref --sort=-committerdate refs/remotes/origin \
+    --format=$'%(refname:short)\t%(committerdate:relative)' |
+    awk -F'\t' '$1 != "origin/HEAD" {
+      short=$1; sub(/^origin\//, "", short);
+      printf "%s\t%-30s %s\n", $1, short, $2
+    }'
+}
+
 # Log all
 gla() {
- # param validation
-  if [[ ! `git log -n 1 $@ | head -n 1` ]] ;then
-    return
+  inside_work_tree || return 1
+  dot_require_fzf || return 1
+
+  local filter_file="" selection hash
+  if [[ -n "$1" && -f "$1" ]]; then
+    filter_file="$1"
   fi
 
-  # filter by file string
-  local filter
-  # param existed, git log for file if existed
-  if [ -n $@ ] && [ -f $@ ]; then
-    filter="-- $@"
+  selection="$(
+    (
+      export GLA_FILTER_FILE="$filter_file"
+      git log --all --decorate --graph --color=always --abbrev=7 \
+        --format='%C(bold blue)%h %C(auto)%an %C(bold cyan)%s %C(auto)%d %C(bold yellow)%cr' "$@" |
+        dot_fzf_ui --ansi --no-sort --tiebreak=index --prompt='git log> ' \
+          --header='enter=open commit  ctrl-y=copy hash' \
+          --preview '
+            hash=$(printf "%s" "{}" | grep -o "[a-f0-9]\{7\}" | head -1)
+            if [[ -n "$hash" ]]; then
+              if [[ -n "$GLA_FILTER_FILE" ]]; then
+                git show --name-status --color=always "$hash" -- "$GLA_FILTER_FILE"
+              else
+                git show --name-status --color=always "$hash"
+              fi
+            fi
+          ' \
+          --preview-window=right:55% \
+          --bind 'ctrl-y:execute-silent(echo {} | grep -o "[a-f0-9]\{7\}" | head -1 | pbcopy)'
+    )
+  )"
+  [[ -z "$selection" ]] && return
+
+  hash="$(printf '%s\n' "$selection" | grep -o '[a-f0-9]\{7\}' | head -1)"
+  [[ -z "$hash" ]] && return
+
+  if [[ -n "$filter_file" ]]; then
+    git show --color=always "$hash" -- "$filter_file" | less -R
+  else
+    git show --color=always "$hash" | less -R
   fi
-
-  # git command
-  local gitlog=(
-    git log
-    --all
-    --decorate
-    --graph 
-    --color=always
-    --abbrev=7
-    # --format='%C(auto)%h %an %C(blue)%s %C(yellow)%cr'
-    --format='%C(bold blue)%h %C(auto) %an %C(bold cyan)%s %C(auto)%d %C(bold yellow)%cr'
-    $@
-  )
-
-  # fzf command
-  local fzf=(
-    fzf
-    --ansi --no-sort --reverse --tiebreak=index
-    --preview "f() { set -- \$(echo -- \$@ | grep -o '[a-f0-9]\{7\}'); [ \$# -eq 0 ] || git show --name-status --color=always \$1 $filter; }; f {}"
-    --bind "ctrl-q:abort,ctrl-m:execute:
-                (grep -o '[a-f0-9]\{7\}' | head -1 |
-                xargs -I % sh -c 'git show --color=always % $filter | less -R') << 'FZF-EOF'
-                {}
-                FZF-EOF"
-   --preview-window=right:50% \
-   --height 60%
-  )
-
-  # piping them
-  $gitlog | $fzf
 }
 
 # Delete branch
 gdb() {
-  local branches=$(git branch | sed "s/.* //" | fzf-tmux) 
-  git branch -d "$branches"
+  inside_work_tree || return 1
+  dot_require_fzf || return 1
+
+  local rows branch current
+  rows="$(dot_git_local_branch_rows)"
+  [[ -z "$rows" ]] && return
+
+  branch="$(
+    printf '%s\n' "$rows" |
+      dot_fzf_ui --prompt='git branch -d> ' --delimiter=$'\t' --with-nth=2 \
+        --header='m  branch                        upstream                 last commit' |
+      cut -f1
+  )" || return
+  [[ -z "$branch" ]] && return
+
+  current="$(git branch --show-current)"
+  [[ "$branch" == "$current" ]] && { echo "Cannot delete current branch: $branch"; return 1; }
+  git branch -d "$branch"
 }
 
 # Delete branch with forceed
 gdfb() {
-  local branches=$(git branch | sed "s/.* //" | fzf-tmux) 
-  git branch -D "$branches"
+  inside_work_tree || return 1
+  dot_require_fzf || return 1
+
+  local rows branch current
+  rows="$(dot_git_local_branch_rows)"
+  [[ -z "$rows" ]] && return
+
+  branch="$(
+    printf '%s\n' "$rows" |
+      dot_fzf_ui --prompt='git branch -D> ' --delimiter=$'\t' --with-nth=2 \
+        --header='m  branch                        upstream                 last commit' |
+      cut -f1
+  )" || return
+  [[ -z "$branch" ]] && return
+
+  current="$(git branch --show-current)"
+  [[ "$branch" == "$current" ]] && { echo "Cannot delete current branch: $branch"; return 1; }
+  git branch -D "$branch"
 }
 
 
 # Checkout branch
 gcob() {
-  local branches=$(git branch | sed "s/.* //" | fzf-tmux)
-  git checkout "$branches"
+  inside_work_tree || return 1
+  dot_require_fzf || return 1
+
+  local rows branch
+  rows="$(dot_git_local_branch_rows)"
+  [[ -z "$rows" ]] && return
+
+  branch="$(
+    printf '%s\n' "$rows" |
+      dot_fzf_ui --prompt='git checkout> ' --delimiter=$'\t' --with-nth=2 \
+        --header='m  branch                        upstream                 last commit' |
+      cut -f1
+  )" || return
+  [[ -z "$branch" ]] && return
+
+  git checkout "$branch"
 }
 
 # Checkout remote branch
 gcorb() {
-  local branches=$(git branch -r | sed "s/.* //" | fzf-tmux) 
-  git checkout --track "$branches"
+  inside_work_tree || return 1
+  dot_require_fzf || return 1
+
+  local rows remote local_branch
+  rows="$(dot_git_remote_branch_rows)"
+  [[ -z "$rows" ]] && return
+
+  remote="$(
+    printf '%s\n' "$rows" |
+      dot_fzf_ui --prompt='git checkout remote> ' --delimiter=$'\t' --with-nth=2 \
+        --header='remote branch                   last commit' |
+      cut -f1
+  )" || return
+  [[ -z "$remote" ]] && return
+
+  local_branch="${remote#origin/}"
+  if git show-ref --verify --quiet "refs/heads/$local_branch"; then
+    git checkout "$local_branch"
+  else
+    git checkout --track "$remote"
+  fi
 }
 
 # Auto use specify node version via nvmsrc
 autoload -U add-zsh-hook
 
 load-nvmrc() {
-  local nvmrc_path
-  nvmrc_path="$(nvm_find_nvmrc)"
+  local dir="$PWD"
+  local nvmrc_path=""
+
+  while [[ "$dir" != "/" ]]; do
+    if [[ -f "$dir/.nvmrc" ]]; then
+      nvmrc_path="$dir/.nvmrc"
+      break
+    fi
+    dir="${dir:h}"
+  done
 
   if [ -n "$nvmrc_path" ]; then
+    _nvm_lazy_load
     local nvmrc_node_version
     nvmrc_node_version=$(nvm version "$(cat "${nvmrc_path}")")
 
@@ -200,11 +370,456 @@ load-nvmrc() {
     elif [ "$nvmrc_node_version" != "$(nvm version)" ]; then
       nvm use
     fi
-  elif [ -n "$(PWD=$OLDPWD nvm_find_nvmrc)" ] && [ "$(nvm version)" != "$(nvm version default)" ]; then
-    echo "Reverting to nvm default version"
-    nvm use default
+  elif typeset -f nvm_find_nvmrc >/dev/null 2>&1; then
+    # Only revert if nvm has already been loaded in this shell.
+    if [ "$(nvm version)" != "$(nvm version default)" ]; then
+      echo "Reverting to nvm default version"
+      nvm use default
+    fi
   fi
 }
 
 add-zsh-hook chpwd load-nvmrc
 load-nvmrc
+
+# Git worktree commands
+# mnemonic: [W]ork[T]ree [A]dd/[L]ist/[R]emove/[G]o
+# Location: .worktrees/ inside project (tool-agnostic)
+
+# Helper: machine rows for worktree pickers.
+# columns: 1=path 2=marker(* main) 3=name 4=branch
+dot_wt_rows() {
+  git worktree list | awk '{
+    path=$1
+    branch=$3
+    gsub(/\[|\]/, "", branch)
+    n=split(path, parts, "/")
+    name=parts[n]
+    marker=(NR==1?"*":" ")
+    printf "%s\t%s\t%s\t%s\n", path, marker, name, branch
+  }'
+}
+
+# Pretty rows: 1=path(key), 2=display
+dot_wt_pretty_rows() {
+  dot_wt_rows | awk -F'\t' '{printf "%s\t%-2s %-16s %-20s %s\n", $1, $2, $3, $4, $1}'
+}
+
+# List worktrees
+alias wtl='git worktree list'
+
+# Add worktree with new branch
+# Usage: wta <name> → creates .worktrees/<name> at feature/<name> branch
+wta() {
+  local name="$1"
+  [[ -z "$name" ]] && { echo "Usage: wta <name>"; return 1; }
+
+  local root=$(git rev-parse --show-toplevel)
+  mkdir -p "${root}/.worktrees"
+  git worktree add "${root}/.worktrees/${name}" -b "feature/${name}" && cd "${root}/.worktrees/${name}"
+}
+
+# Add worktree with fzf branch selection
+# mnemonic: [W]ork[T]ree [A]dd [B]ranch
+wtab() {
+  dot_require_fzf || return 1
+
+  local rows branch root name local_branch
+  rows="$(
+    {
+      git for-each-ref --sort=-committerdate refs/heads \
+        --format=$'%(refname:short)\tlocal\t%(committerdate:relative)'
+      git for-each-ref --sort=-committerdate refs/remotes/origin \
+        --format=$'%(refname:short)\tremote\t%(committerdate:relative)' |
+        awk -F'\t' '$1 != "origin/HEAD"'
+    } |
+      awk -F'\t' '{
+        short=$1; sub(/^origin\//, "", short);
+        printf "%s\t%-30s %-8s %s\n", $1, short, $2, $3
+      }'
+  )"
+  [[ -z "$rows" ]] && return
+
+  branch="$(
+    printf '%s\n' "$rows" |
+      dot_fzf_ui --prompt='worktree branch> ' --delimiter=$'\t' --with-nth=2 \
+        --header='branch                         source   last commit' |
+      cut -f1
+  )"
+  [[ -z "$branch" ]] && return
+
+  root=$(git rev-parse --show-toplevel)
+  name="${branch##*/}"
+  mkdir -p "${root}/.worktrees"
+
+  if [[ "$branch" == origin/* ]]; then
+    local_branch="${branch#origin/}"
+    name="$local_branch"
+    if git show-ref --verify --quiet "refs/heads/$local_branch"; then
+      git worktree add "${root}/.worktrees/${name}" "$local_branch" &&
+        cd "${root}/.worktrees/${name}"
+    else
+      git worktree add "${root}/.worktrees/${name}" -b "$local_branch" --track "$branch" &&
+        cd "${root}/.worktrees/${name}"
+    fi
+  else
+    git worktree add "${root}/.worktrees/${name}" "$branch" &&
+      cd "${root}/.worktrees/${name}"
+  fi
+}
+
+# Remove worktree with fzf selection
+# mnemonic: [W]ork[T]ree [R]emove
+wtr() {
+  dot_require_fzf || return 1
+
+  local rows wt_path
+  rows="$(dot_wt_pretty_rows | awk -F'\t' '$2 !~ /^\*/')"
+  [[ -z "$rows" ]] && { echo "No removable worktree."; return 1; }
+
+  wt_path="$(
+    printf '%s\n' "$rows" |
+      dot_fzf_ui --prompt='worktree remove> ' --delimiter=$'\t' --with-nth=2 \
+        --header='m  name             branch               path' |
+      cut -f1
+  )"
+  [[ -z "$wt_path" ]] && return
+
+  git worktree remove "$wt_path"
+}
+
+# Go to worktree with fzf selection
+# mnemonic: [W]ork[T]ree [G]o
+wtg() {
+  dot_require_fzf || return 1
+
+  local rows wt_path
+  rows="$(dot_wt_pretty_rows)"
+  [[ -z "$rows" ]] && return
+
+  wt_path="$(
+    printf '%s\n' "$rows" |
+      dot_fzf_ui --prompt='worktree go> ' --delimiter=$'\t' --with-nth=2 \
+        --header='m  name             branch               path' |
+      cut -f1
+  )"
+  [[ -z "$wt_path" ]] && return
+
+  cd "$wt_path"
+}
+
+# Go to main worktree (project root)
+# mnemonic: [W]ork[T]ree [B]ase
+wtb() {
+  cd "$(git worktree list | head -1 | awk '{print $1}')"
+}
+
+# Merge worktree branch to main with fzf selection
+# mnemonic: [W]ork[T]ree [M]erge
+wtm() {
+  dot_require_fzf || return 1
+
+  local main_path main_branch rows wt_path wt_branch
+  main_path="$(dot_wt_rows | sed -n '1p' | cut -f1)"
+  main_branch="$(dot_wt_rows | sed -n '1p' | cut -f4)"
+
+  rows="$(dot_wt_pretty_rows | awk -F'\t' '$2 !~ /^\*/')"
+  [[ -z "$rows" ]] && { echo "No worktree branch to merge."; return 1; }
+
+  wt_path="$(
+    printf '%s\n' "$rows" |
+      dot_fzf_ui --prompt='worktree merge> ' --delimiter=$'\t' --with-nth=2 \
+        --header='m  name             branch               path' |
+      cut -f1
+  )"
+  [[ -z "$wt_path" ]] && return
+
+  wt_branch="$(dot_wt_rows | awk -F'\t' -v p="$wt_path" '$1==p{print $4; exit}')"
+  [[ -z "$wt_branch" ]] && { echo "Unable to resolve branch for: $wt_path"; return 1; }
+
+  # Go to main worktree and merge
+  cd "$main_path" || return 1
+  echo "Merging $wt_branch into $main_branch..."
+
+  if git merge "$wt_branch"; then
+    echo "✓ Merged successfully"
+    echo -n "Remove worktree? [y/N] "
+    read -r answer
+    [[ "$answer" =~ ^[Yy]$ ]] && git worktree remove "$wt_path" && git branch -d "$wt_branch"
+  else
+    echo "✗ Merge failed - resolve conflicts manually"
+  fi
+}
+
+# Add worktree + init environment + start AI agent
+# mnemonic: [W]ork[T]ree [C]ode (or Claude/Codex/etc)
+wtc() {
+  local name="$1"
+  local agent="${2:-aa}"  # default unified entrypoint; can pass aa/ao/ag/opencode/etc.
+
+  wta "$name" || return 1
+
+  # Auto-detect and init environment
+  [[ -f "package.json" ]] && {
+    [[ -f "pnpm-lock.yaml" ]] && pnpm install
+    [[ -f "yarn.lock" ]] && yarn install
+    [[ ! -f "pnpm-lock.yaml" && ! -f "yarn.lock" ]] && npm install
+  }
+  [[ -f "pyproject.toml" || -f "requirements.txt" ]] && {
+    command -v uv &>/dev/null && uv sync || {
+      [[ -f "requirements.txt" ]] && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+    }
+  }
+
+  $agent
+}
+
+# Unified AI agent entrypoints (shared by shell and tmux popup)
+dot_agent_cmd() {
+  local cmd="$1"
+  shift
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "$cmd not found in PATH"
+    return 127
+  fi
+  "$cmd" "$@"
+}
+
+aa() { dot_agent_cmd claude "$@"; }  # Anthropic
+ac() { aa "$@"; }                 # Backward-compatible alias
+ao() { dot_agent_cmd codex "$@"; }   # OpenAI
+ag() { dot_agent_cmd gemini "$@"; }  # Google
+
+# Native resume entrypoints (no fzf; rely on each provider's built-in flow)
+aar() { dot_agent_cmd claude -r "$@"; }
+aor() { dot_agent_cmd codex resume "$@"; }
+agr() {
+  local target="${1:-latest}"
+  dot_agent_cmd gemini --resume "$target"
+}
+
+unalias tl tx ts tsw tk tw aa ao ag ac aar aor agr 2>/dev/null
+
+dot_require_fzf() {
+  if ! command -v fzf >/dev/null 2>&1; then
+    echo "fzf not found in PATH"
+    return 1
+  fi
+}
+
+dot_tmux_cmd() {
+  command tmux "$@"
+}
+
+dot_tmux_session_rows() {
+  local current=""
+  if [[ -n "$TMUX" ]]; then
+    current="$(dot_tmux_cmd display-message -p '#S' 2>/dev/null)"
+  fi
+
+  dot_tmux_cmd list-sessions -F $'#{session_name}\t#{session_attached}\t#{session_windows}' 2>/dev/null |
+    while IFS=$'\t' read -r name attached windows; do
+      local marker="o"
+      local state="idle"
+      [[ "$attached" -gt 0 ]] && { marker="+"; state="attached"; }
+      [[ -n "$current" && "$name" == "$current" ]] && { marker="*"; state="current"; }
+      # Machine-readable columns:
+      # 1=session_name 2=marker 3=state 4=attached_count 5=window_count
+      printf '%s\t%s\t%s\t%s\t%s\n' "$name" "$marker" "$state" "$attached" "$windows"
+    done
+}
+
+dot_tmux_session_pretty_rows() {
+  dot_tmux_session_rows |
+    awk -F'\t' '{
+      session=$1
+      if (length(session) > 20) session=substr(session, 1, 17) "..."
+      printf "%s\t%-2s %-9s %-20s %7s %7s\n", $1, $2, $3, session, $4, $5
+    }'
+}
+
+dot_tmux_pane_pretty_rows() {
+  dot_tmux_cmd list-panes -a -F $'#{session_name}:#{window_index}.#{pane_index}\t#{window_name}\t#{pane_current_command}\t#{pane_current_path}' |
+    awk -F'\t' '{
+      cwd=$4
+      window=$2
+      cmd=$3
+      if (length(window) > 14) window=substr(window, 1, 11) "..."
+      if (length(cmd) > 10) cmd=substr(cmd, 1, 7) "..."
+      if (length(cwd) > 50) cwd="..." substr(cwd, length(cwd)-46)
+      printf "%s\t%-12s %-14s %-10s %s\n", $1, $1, window, cmd, cwd
+    }'
+}
+
+dot_tmux_window_pretty_rows() {
+  dot_tmux_cmd list-windows -a -F $'#{session_name}:#{window_index}\t#{session_name}\t#{window_index}\t#{window_name}\t#{window_panes}\t#{window_active}' 2>/dev/null |
+    awk -F'\t' '{
+      mark=($6=="1"?"*":" ")
+      name=$4
+      if (length(name) > 16) name=substr(name, 1, 13) "..."
+      printf "%s\t%-2s %-14s %3s %-16s %5s\n", $1, mark, $2, $3, name, $5
+    }'
+}
+
+# tmux session control plane (works inside and outside tmux)
+tl() {
+  local rows
+  rows="$(dot_tmux_session_pretty_rows)"
+  if [[ -z "$rows" ]]; then
+    echo "No tmux sessions. Use: tx <name>"
+    return 1
+  fi
+  printf '%-2s %-9s %-20s %7s %7s\n' "m" "state" "session" "clients" "wins"
+  printf '%s\n' "$rows" | awk -F'\t' '{print $2}'
+}
+
+tx() {
+  local name="${1:-$(basename "$PWD")}"
+  if [[ -n "$TMUX" ]]; then
+    if dot_tmux_cmd has-session -t "$name" 2>/dev/null; then
+      dot_tmux_cmd switch-client -t "$name"
+    else
+      dot_tmux_cmd new-session -d -s "$name" -c "$PWD"
+      dot_tmux_cmd switch-client -t "$name"
+    fi
+  else
+    dot_tmux_cmd new-session -A -s "$name" -c "$PWD"
+  fi
+}
+
+ts() {
+  dot_require_fzf || return 1
+
+  local rows target
+  rows="$(dot_tmux_session_pretty_rows)"
+  if [[ -z "$rows" ]]; then
+    echo "No tmux sessions. Use: tx <name>"
+    return 1
+  fi
+
+  target="$(
+    printf '%s\n' "$rows" |
+      dot_fzf_ui --prompt='session> ' --delimiter=$'\t' --with-nth=2 \
+        --header=$'m  state     session               clients   wins' |
+      cut -f1
+  )"
+  [[ -z "$target" ]] && return
+
+  if [[ -n "$TMUX" ]]; then
+    dot_tmux_cmd switch-client -t "$target"
+  else
+    dot_tmux_cmd attach-session -t "$target"
+  fi
+}
+
+tk() {
+  local target="$1"
+  if [[ -z "$target" ]]; then
+    dot_require_fzf || return 1
+    local rows selected
+    rows="$(dot_tmux_session_pretty_rows)"
+    if [[ -z "$rows" ]]; then
+      echo "No tmux sessions to kill."
+      return 1
+    fi
+    selected="$(
+      printf '%s\n' "$rows" |
+        dot_fzf_ui --prompt='kill session> ' --delimiter=$'\t' --with-nth=2 \
+          --header=$'m  state     session               clients   wins'
+    )"
+    target="$(printf '%s' "$selected" | cut -f1)"
+  fi
+
+  [[ -z "$target" ]] && return
+  dot_tmux_cmd kill-session -t "$target"
+}
+
+tsw() {
+  dot_require_fzf || return 1
+
+  local rows target session
+  rows="$(dot_tmux_window_pretty_rows)"
+  if [[ -z "$rows" ]]; then
+    echo "No tmux windows. Use: tx <name>"
+    return 1
+  fi
+
+  target="$(
+    printf '%s\n' "$rows" |
+      dot_fzf_ui --prompt='window> ' --delimiter=$'\t' --with-nth=2 \
+        --header=$'m  session         idx window            panes' |
+      cut -f1
+  )"
+  [[ -z "$target" ]] && return
+
+  session="${target%%:*}"
+  if [[ -n "$TMUX" ]]; then
+    dot_tmux_cmd switch-client -t "$session"
+    dot_tmux_cmd select-window -t "$target"
+  else
+    dot_tmux_cmd attach-session -t "$target"
+  fi
+}
+
+dot_tmux_window_exists() {
+  local session="$1"
+  local window="$2"
+  dot_tmux_cmd list-windows -t "$session" -F '#W' 2>/dev/null | grep -Fxq "$window"
+}
+
+# tw: expand default workspace windows in target session.
+# default windows: editor, agent, test, logs
+tw() {
+  local name root editor_pane
+  if [[ -n "$1" ]]; then
+    name="$1"
+  elif [[ -n "$TMUX" ]]; then
+    name="$(dot_tmux_cmd display-message -p '#S')"
+  else
+    name="$(basename "$PWD")"
+  fi
+  root="${2:-$PWD}"
+
+  if ! dot_tmux_cmd has-session -t "$name" 2>/dev/null; then
+    editor_pane="$(dot_tmux_cmd new-session -d -P -F '#{pane_id}' -s "$name" -n editor -c "$root")" || return 1
+    dot_tmux_cmd send-keys -t "$editor_pane" "nvim ." C-m
+  elif ! dot_tmux_window_exists "$name" "editor"; then
+    editor_pane="$(dot_tmux_cmd new-window -d -P -F '#{pane_id}' -t "$name" -n editor -c "$root")" || return 1
+    dot_tmux_cmd send-keys -t "$editor_pane" "nvim ." C-m
+  fi
+
+  dot_tmux_window_exists "$name" "agent" || dot_tmux_cmd new-window -d -t "$name" -n agent -c "$root"
+  dot_tmux_window_exists "$name" "test" || dot_tmux_cmd new-window -d -t "$name" -n test -c "$root"
+  dot_tmux_window_exists "$name" "logs" || dot_tmux_cmd new-window -d -t "$name" -n logs -c "$root"
+
+  if [[ -n "$TMUX" ]]; then
+    dot_tmux_cmd switch-client -t "$name"
+  else
+    dot_tmux_cmd attach-session -t "$name"
+  fi
+
+  dot_tmux_cmd select-window -t "$name:editor" 2>/dev/null
+}
+
+# tmux/fzf workspace helper
+tsp() {
+  [[ -n "$TMUX" ]] || { echo "Not inside tmux"; return 1; }
+  dot_require_fzf || return 1
+  local target session window pane
+  target="$(
+    dot_tmux_pane_pretty_rows |
+      dot_fzf_ui --delimiter=$'\t' --with-nth=2 --prompt='pane> ' \
+        --header=$'target       window          cmd        cwd' |
+      cut -f1
+  )"
+  [[ -z "$target" ]] && return
+
+  session="${target%%:*}"         # e.g. "test"
+  pane="${target##*.}"            # e.g. "1"
+  window="${target#*:}"           # e.g. "4.1"
+  window="${window%.*}"           # e.g. "4"
+
+  dot_tmux_cmd switch-client -t "$session"
+  dot_tmux_cmd select-window -t "${session}:${window}"
+  dot_tmux_cmd select-pane -t "${session}:${window}.${pane}"
+}
