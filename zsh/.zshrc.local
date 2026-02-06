@@ -1,5 +1,10 @@
 # Aliases
-alias vim='mvim -v'
+alias vim='nvim'
+alias vi='nvim'
+alias mvim='nvim'
+export EDITOR='nvim'
+export VISUAL='nvim'
+export GIT_EDITOR='nvim'
 alias rm='echo "Foce add option -i. (**Warning** addtional -f will override this)";rm -i'
 # alias python=~/.pyenv/versions/2.7.18/bin/python  # Commented for ARM migration
 
@@ -767,10 +772,114 @@ dot_tmux_window_exists() {
   dot_tmux_cmd list-windows -t "$session" -F '#W' 2>/dev/null | grep -Fxq "$window"
 }
 
+dot_tmux_window_pane_count() {
+  local target="$1"
+  dot_tmux_cmd list-panes -t "$target" 2>/dev/null | wc -l | tr -d ' '
+}
+
+dot_tmux_bootstrap_window_layout() {
+  local session="$1"
+  local root="$2"
+  local panes
+
+  panes="$(dot_tmux_window_pane_count "${session}:editor")"
+  if [[ "$panes" -eq 1 ]]; then
+    dot_tmux_cmd split-window -d -h -p 30 -t "${session}:editor" -c "$root"
+  fi
+
+  panes="$(dot_tmux_window_pane_count "${session}:test")"
+  if [[ "$panes" -eq 1 ]]; then
+    dot_tmux_cmd split-window -d -v -p 35 -t "${session}:test" -c "$root"
+  fi
+}
+
+dot_detect_watch_cmd() {
+  local root="$1"
+  local pkg="$root/package.json"
+  local runner=""
+  local cmd=""
+
+  if [[ -n "${TW_WATCH_CMD:-}" ]]; then
+    printf '%s' "$TW_WATCH_CMD"
+    return 0
+  fi
+
+  if [[ -f "$root/.tw-watch" ]]; then
+    cmd="$(sed -n '1p' "$root/.tw-watch" | tr -d '\r')"
+    if [[ -n "$cmd" ]]; then
+      printf '%s' "$cmd"
+      return 0
+    fi
+  fi
+
+  if [[ -f "$pkg" ]]; then
+    if [[ -f "$root/pnpm-lock.yaml" ]] && command -v pnpm >/dev/null 2>&1; then
+      runner="pnpm"
+    elif [[ -f "$root/yarn.lock" ]] && command -v yarn >/dev/null 2>&1; then
+      runner="yarn"
+    elif command -v npm >/dev/null 2>&1; then
+      runner="npm"
+    fi
+
+    if [[ -n "$runner" ]]; then
+      if rg -q '"test:watch"\\s*:' "$pkg"; then
+        if [[ "$runner" == "npm" ]]; then
+          printf '%s' "npm run test:watch"
+        else
+          printf '%s' "$runner run test:watch"
+        fi
+        return 0
+      fi
+
+      if rg -q '"test"\\s*:' "$pkg"; then
+        if [[ "$runner" == "npm" ]]; then
+          printf '%s' "npm test -- --watch"
+        else
+          printf '%s' "$runner test -- --watch"
+        fi
+        return 0
+      fi
+    fi
+  fi
+
+  if command -v pytest >/dev/null 2>&1; then
+    if [[ -f "$root/pytest.ini" || -f "$root/pyproject.toml" || -d "$root/tests" ]]; then
+      printf '%s' "pytest -f"
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+dot_tmux_start_watch_if_needed() {
+  local session="$1"
+  local root="$2"
+  local should_bootstrap="$3"
+  local watch_target="${session}:test.1"
+  local watch_cmd=""
+
+  [[ "${TW_AUTO_WATCH:-1}" == "0" ]] && return 0
+  [[ "$should_bootstrap" -eq 1 ]] || return 0
+
+  watch_cmd="$(dot_detect_watch_cmd "$root" || true)"
+  if [[ -n "$watch_cmd" ]]; then
+    dot_tmux_cmd send-keys -t "$watch_target" "$watch_cmd" C-m
+  else
+    dot_tmux_cmd send-keys -t "$watch_target" "echo '[tw] No watch command detected. Set TW_WATCH_CMD or add .tw-watch'" C-m
+  fi
+}
+
 # tw: expand default workspace windows in target session.
 # default windows: editor, agent, test, logs
+# pane roles:
+# - editor: code + shell
+# - test: watch + adhoc
 tw() {
-  local name root editor_pane
+  local name root editor_pane panes
+  local created_session=0
+  local created_test_window=0
+  local should_bootstrap_watch=0
   if [[ -n "$1" ]]; then
     name="$1"
   elif [[ -n "$TMUX" ]]; then
@@ -783,14 +892,51 @@ tw() {
   if ! dot_tmux_cmd has-session -t "$name" 2>/dev/null; then
     editor_pane="$(dot_tmux_cmd new-session -d -P -F '#{pane_id}' -s "$name" -n editor -c "$root")" || return 1
     dot_tmux_cmd send-keys -t "$editor_pane" "nvim ." C-m
+    created_session=1
   elif ! dot_tmux_window_exists "$name" "editor"; then
     editor_pane="$(dot_tmux_cmd new-window -d -P -F '#{pane_id}' -t "$name" -n editor -c "$root")" || return 1
     dot_tmux_cmd send-keys -t "$editor_pane" "nvim ." C-m
   fi
 
   dot_tmux_window_exists "$name" "agent" || dot_tmux_cmd new-window -d -t "$name" -n agent -c "$root"
-  dot_tmux_window_exists "$name" "test" || dot_tmux_cmd new-window -d -t "$name" -n test -c "$root"
+  if ! dot_tmux_window_exists "$name" "test"; then
+    dot_tmux_cmd new-window -d -t "$name" -n test -c "$root" || return 1
+    created_test_window=1
+  fi
   dot_tmux_window_exists "$name" "logs" || dot_tmux_cmd new-window -d -t "$name" -n logs -c "$root"
+
+  dot_tmux_bootstrap_window_layout "$name" "$root"
+
+  panes="$(dot_tmux_window_pane_count "${name}:editor")"
+  if [[ "$panes" -ge 1 ]]; then
+    dot_tmux_cmd select-pane -t "${name}:editor.1" -T code 2>/dev/null
+  fi
+  if [[ "$panes" -ge 2 ]]; then
+    dot_tmux_cmd select-pane -t "${name}:editor.2" -T shell 2>/dev/null
+  fi
+
+  panes="$(dot_tmux_window_pane_count "${name}:agent")"
+  if [[ "$panes" -ge 1 ]]; then
+    dot_tmux_cmd select-pane -t "${name}:agent.1" -T agent 2>/dev/null
+  fi
+
+  panes="$(dot_tmux_window_pane_count "${name}:test")"
+  if [[ "$panes" -ge 1 ]]; then
+    dot_tmux_cmd select-pane -t "${name}:test.1" -T watch 2>/dev/null
+  fi
+  if [[ "$panes" -ge 2 ]]; then
+    dot_tmux_cmd select-pane -t "${name}:test.2" -T adhoc 2>/dev/null
+  fi
+
+  panes="$(dot_tmux_window_pane_count "${name}:logs")"
+  if [[ "$panes" -ge 1 ]]; then
+    dot_tmux_cmd select-pane -t "${name}:logs.1" -T logs 2>/dev/null
+  fi
+
+  if [[ "$created_session" -eq 1 || "$created_test_window" -eq 1 ]]; then
+    should_bootstrap_watch=1
+  fi
+  dot_tmux_start_watch_if_needed "$name" "$root" "$should_bootstrap_watch"
 
   if [[ -n "$TMUX" ]]; then
     dot_tmux_cmd switch-client -t "$name"
