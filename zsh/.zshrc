@@ -1,3 +1,14 @@
+# OPENSPEC:START
+# OpenSpec shell completions configuration
+fpath=("/Users/gregho/.oh-my-zsh/custom/completions" $fpath)
+autoload -Uz compinit
+compinit
+# OPENSPEC:END
+
+# Locale safety for Nerd Font/powerline symbols.
+export LANG="${LANG:-en_US.UTF-8}"
+export LC_CTYPE="${LC_CTYPE:-en_US.UTF-8}"
+
 # tmu support 256 color
 export TERM="xterm-256color"
 
@@ -36,14 +47,7 @@ POWERLEVEL9K_BATTERY_DISCONNECTED_BACKGROUND='none'
 POWERLEVEL9K_BATTERY_DISCONNECTED_FOREGROUND='003'
 POWERLEVEL9K_BATTERY_LOW_THRESHOLD=30
 POWERLEVEL9K_BATTERY_VERBOSE=false
-# POWERLEVEL9K_BATTERY_STAGES=''
-POWERLEVEL9K_BATTERY_STAGES=(
-  $'\uF244'  #  empty
-  $'\uF243'  #  low
-  $'\uF242'  #  medium
-  $'\uF241'  #  high
-  $'\uF240'  #  full
-)
+POWERLEVEL9K_BATTERY_STAGES=('.' ':' '|' '||' '|||')
 
 # time
 # POWERLEVEL9K_TIME_FORMAT="%D{%H:%M} %F{003}\uF017"
@@ -146,10 +150,8 @@ SAVEHIST=15000
 # HISTFILE=~/.cache/zsh/history
 
 # Basic auto/tab complete:
-autoload -U compinit
 zstyle ':completion:*' menu select
 zmodload zsh/complist
-compinit
 _comp_options+=(globdots)		# Include hidden files.
 
 # Set list of themes to load
@@ -205,9 +207,7 @@ plugins=(
   zsh-syntax-highlighting
   docker
   git
-  nvm
-  node
-  npm
+  # nvm, node, npm - using lazy loading
   kubectl
   minikube
   tmux
@@ -220,7 +220,33 @@ source $ZSH/oh-my-zsh.sh
 
 # User configuration
 
-source ~/.bash_profile
+# NVM lazy loading
+export NVM_DIR="$HOME/.nvm"
+_nvm_lazy_load() {
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+}
+
+
+nvm() {
+  unset -f nvm node npm npx
+  _nvm_lazy_load
+  nvm "$@"
+}
+node() {
+  unset -f nvm node npm npx
+  _nvm_lazy_load
+  node "$@"
+}
+npm() {
+  unset -f nvm node npm npx
+  _nvm_lazy_load
+  npm "$@"
+}
+npx() {
+  unset -f nvm node npm npx
+  _nvm_lazy_load
+  npx "$@"
+}
 
 # zsh-highlight
 ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets pattern cursor)
@@ -333,10 +359,26 @@ export FZF_ALT_C_OPTS="--preview 'tree -C {} | head -200'"
 # Load local source
 [ -f ~/.zshrc.local ] && source ~/.zshrc.local
 
-neofetch
+# Keep startup lean. Run fastfetch manually when needed.
+alias ff='fastfetch'
 eval "$(rbenv init - zsh)"
-# The following lines have been added by Docker Desktop to enable Docker CLI completions.
+# Docker Desktop CLI completions.
 fpath=(/Users/gregho/.docker/completions $fpath)
-autoload -Uz compinit
-compinit
-# End of Docker CLI completions
+
+. "$HOME/.local/bin/env"
+
+# GVM disabled - causing cd slowdown
+# [[ -s "/Users/gregho/.gvm/scripts/gvm" ]] && source "/Users/gregho/.gvm/scripts/gvm"
+
+# opencode
+export PATH=/Users/gregho/.opencode/bin:$PATH
+
+# bun completions
+[ -s "/Users/gregho/.bun/_bun" ] && source "/Users/gregho/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+
+# Added by Antigravity
+export PATH="/Users/gregho/.antigravity/antigravity/bin:$PATH"
