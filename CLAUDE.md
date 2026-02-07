@@ -6,6 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Personal dotfiles for a macOS (ARM) development environment. Each tool owns a directory with base configs and optional `.local` override files for machine-specific customization. `.local` files are gitignored and may contain secrets.
 
+## Deployment
+
+Uses GNU Stow. Each top-level directory (e.g. `zsh/`, `tmux/`, `nvim/`, `config/`) is a stow package.
+Files are symlinked relative to `$HOME`. For XDG configs, the `config/` package maps to `~/.config/`.
+Example: `stow zsh` symlinks `zsh/.zshrc` → `~/.zshrc`; `stow config` symlinks `config/tmux-powerline/` → `~/.config/tmux-powerline/`.
+
 ## Validation
 
 ```bash
@@ -57,6 +63,16 @@ Most tools follow: base config + `.local` override.
 | Vim plugins | `vim/.vimrc.bundles` | `vim/.vimrc.bundles.local` |
 | Tmux  | Oh My Tmux base       | `tmux/.tmux.conf.local`  |
 
+## Config Directory (`config/`)
+
+XDG-style configs deployed via `stow config` to `~/.config/`:
+
+| Tool            | Path                        | Notes                                    |
+|-----------------|-----------------------------|------------------------------------------|
+| Lazygit         | `config/lazygit/`           | Tokyonight Storm theme, safety defaults  |
+| Karabiner       | `config/karabiner/`         | macOS keyboard remapping rules           |
+| tmux-powerline  | `config/tmux-powerline/`    | Custom theme + segment config (see Tmux) |
+
 ## FZF Helper Pattern
 
 All fzf-based interactive pickers in `zsh/.zshrc.local` share a common UI via:
@@ -88,8 +104,8 @@ In zsh, `nvm`/`node`/`npm`/`npx` are stub functions that self-replace on first c
 
 - Base framework: Oh My Tmux (`.tmux.conf` from gpakosz)
 - All local overrides in `tmux/.tmux.conf.local`
-- Theme: tmux-power with Everforest palette (built-in Oh My Tmux theme disabled)
-- Plugins via tpm: tmux-resurrect, tmux-continuum, tmux-power
+- Theme: tmux-powerline with custom Tokyo Night Storm minimal theme (`config/tmux-powerline/config.sh`; built-in Oh My Tmux theme disabled)
+- Plugins via tpm: tmux-resurrect, tmux-continuum, erikw/tmux-powerline
 - Mouse on, vi mode keys, prefix is C-a (GNU Screen compatible)
 - Plugin auto-update on launch/reload is disabled for faster startup
 
@@ -98,3 +114,11 @@ In zsh, `nvm`/`node`/`npm`/`npx` are stub functions that self-replace on first c
 - Plugin manager: vim-plug (bundles in `vim/.vimrc.bundles`, local additions in `.vimrc.bundles.local`)
 - LSP: CoC (Conquer of Completion) with settings in `vim/coc-settings.json`
 - 2-space indentation, system clipboard integration
+
+## Neovim
+
+- Based on kickstart.nvim; entry point `nvim/init.lua`
+- Plugin manager: lazy.nvim (lock file `nvim/lazy-lock.json`)
+- Custom plugins in `nvim/lua/custom/plugins/`; kickstart modules in `nvim/lua/kickstart/plugins/`
+- LSP configured via mason.nvim (auto-install servers)
+- Stowed to `~/.config/nvim`
