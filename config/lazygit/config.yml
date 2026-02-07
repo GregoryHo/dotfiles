@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/jesseduffield/lazygit/master/schema/config.json
+#
+# Lazygit profile for tmux-first workflow with Neovim as editor.
+# Keep this file intentionally small; rely on lazygit defaults unless we
+# explicitly need an override.
+
+gui:
+  border: rounded
+  showRandomTip: false
+  showCommandLog: true
+  showPanelJumps: true
+  showFileIcons: true
+  nerdFontsVersion: "3"
+  splitDiff: auto
+  theme:
+    activeBorderColor: ["#7aa2f7", "bold"]
+    inactiveBorderColor: ["#414868"]
+    searchingActiveBorderColor: ["#7dcfff", "bold"]
+    optionsTextColor: ["#bb9af7"]
+    selectedLineBgColor: ["#2f334d"]
+    inactiveViewSelectedLineBgColor: ["default"]
+    unstagedChangesColor: ["#f7768e"]
+    defaultFgColor: ["#c0caf5"]
+
+git:
+  autoFetch: true
+  autoRefresh: true
+  fetchAll: true
+  autoForwardBranches: onlyMainBranches
+  disableForcePushing: true
+  truncateCopiedCommitHashesTo: 12
+
+os:
+  editPreset: nvim
+
+update:
+  method: prompt
+  days: 14
+
+notARepository: quit
+promptToReturnFromSubprocess: true
+disableStartupPopups: true
+confirmOnQuit: false
