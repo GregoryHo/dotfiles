@@ -511,25 +511,11 @@ set -g @plugin 'tmux-plugins/tmux-resurrect'
 set -g @plugin 'tmux-plugins/tmux-continuum'
 set -g @plugin 'christoomey/vim-tmux-navigator'
 
-# tmux-power theme (Everforest - 深綠色工程風格)
-set -g @plugin 'wfxr/tmux-power'
-set -g @tmux_power_theme 'everforest'
-
-# 顯示設定
-set -g @tmux_power_show_upload_speed    false
-set -g @tmux_power_show_download_speed  false
-set -g @tmux_power_show_web_reachable   false
-set -g @tmux_power_prefix_highlight_pos 'L'
-
-# 日期時間格式
-set -g @tmux_power_date_format '%Y-%m-%d'
-set -g @tmux_power_time_format '%H:%M'
-
-# 圖標 (使用 Nerd Font)
-set -g @tmux_power_date_icon ''
-set -g @tmux_power_time_icon ''
-set -g @tmux_power_user_icon ''
-set -g @tmux_power_session_icon ''
+# tmux-powerline theme (Tokyo Night Storm minimal)
+set -g @plugin 'erikw/tmux-powerline'
+set -g status-position bottom
+# Ensure tmux-powerline applies immediately when plugin files are present.
+if-shell '[ -x "$HOME/.tmux/plugins/tmux-powerline/main.tmux" ]' 'run-shell "$HOME/.tmux/plugins/tmux-powerline/main.tmux"'
 
 # -- custom variables ----------------------------------------------------------
 
