@@ -35,6 +35,16 @@ export PATH="$GOPATH/bin:$PATH"
 # Flutter
 export PATH="$PATH:/Users/$USER/Library/Flutter/bin"
 
+# Opencode
+export PATH="$HOME/.opencode/bin:$PATH"
+
+# Bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+
+# Antigravity
+export PATH="$HOME/.antigravity/antigravity/bin:$PATH"
+
 # Local/cargo env scripts (if present)
 [ -f "$HOME/.local/bin/env" ] && . "$HOME/.local/bin/env"
 [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
