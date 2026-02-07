@@ -434,21 +434,33 @@ bind-key -n C-\\ if-shell "$is_vim" 'send-keys C-\\' 'select-pane -l'
 bind-key -n M-h previous-window
 bind-key -n M-l next-window
 
-# Provider popup launchers (vibe coding)
-# prefix + A: Anthropic (aa)
-bind-key A display-popup -E -w 90% -h 85% "$SHELL -lic 'aa'"
-# prefix + O: OpenAI (ao)
-bind-key O display-popup -E -w 90% -h 85% "$SHELL -lic 'ao'"
-# prefix + G: Google (ag)
-bind-key G display-popup -E -w 90% -h 85% "$SHELL -lic 'ag'"
+# Agent and Lazygit launchers (hybrid flow)
+# Uppercase: switch/create dedicated window
+# Lowercase: quick popup
+
+# prefix + A/a: Anthropic (aa)
+bind-key A run-shell -b 'if tmux list-windows -F "#{window_name}" | grep -Fxq "agent-claude"; then tmux select-window -t agent-claude; else tmux new-window -d -n agent-claude -c "#{pane_current_path}"; tmux send-keys -t agent-claude.1 "aa" C-m; tmux select-window -t agent-claude; fi'
+bind-key a display-popup -E -w 90% -h 85% "$SHELL -lic 'aa'"
+
+# prefix + O/o: OpenAI (ao)
+bind-key O run-shell -b 'if tmux list-windows -F "#{window_name}" | grep -Fxq "agent-codex"; then tmux select-window -t agent-codex; else tmux new-window -d -n agent-codex -c "#{pane_current_path}"; tmux send-keys -t agent-codex.1 "ao" C-m; tmux select-window -t agent-codex; fi'
+bind-key o display-popup -E -w 90% -h 85% "$SHELL -lic 'ao'"
+
+# prefix + G/g: Google (ag)
+bind-key G run-shell -b 'if tmux list-windows -F "#{window_name}" | grep -Fxq "agent-gemini"; then tmux select-window -t agent-gemini; else tmux new-window -d -n agent-gemini -c "#{pane_current_path}"; tmux send-keys -t agent-gemini.1 "ag" C-m; tmux select-window -t agent-gemini; fi'
+bind-key g display-popup -E -w 90% -h 85% "$SHELL -lic 'ag'"
+
+# prefix + L/l: Lazygit (lg)
+bind-key L run-shell -b 'if tmux list-windows -F "#{window_name}" | grep -Fxq "git"; then tmux select-window -t git; else tmux new-window -d -n git -c "#{pane_current_path}"; tmux send-keys -t git.1 "lg" C-m; tmux select-window -t git; fi'
+bind-key l display-popup -E -w 90% -h 85% "$SHELL -lic 'lg'"
 
 # Resume mode (native provider resume, no fzf)
 # prefix + R then A/O/G
 bind-key R switch-client -T agent_resume \; display-message "resume> A=Claude O=Codex G=Gemini Esc=cancel"
 bind-key -T agent_resume Escape switch-client -T prefix
-bind-key -T agent_resume A switch-client -T prefix \; display-popup -E -w 90% -h 85% "$SHELL -lic 'aar'"
-bind-key -T agent_resume O switch-client -T prefix \; display-popup -E -w 90% -h 85% "$SHELL -lic 'aor'"
-bind-key -T agent_resume G switch-client -T prefix \; display-popup -E -w 90% -h 85% "$SHELL -lic 'agr'"
+bind-key -T agent_resume A switch-client -T prefix \; run-shell -b 'if tmux list-windows -F "#{window_name}" | grep -Fxq "agent-claude"; then tmux select-window -t agent-claude; else tmux new-window -d -n agent-claude -c "#{pane_current_path}"; fi; tmux send-keys -t agent-claude.1 "aar" C-m'
+bind-key -T agent_resume O switch-client -T prefix \; run-shell -b 'if tmux list-windows -F "#{window_name}" | grep -Fxq "agent-codex"; then tmux select-window -t agent-codex; else tmux new-window -d -n agent-codex -c "#{pane_current_path}"; fi; tmux send-keys -t agent-codex.1 "aor" C-m'
+bind-key -T agent_resume G switch-client -T prefix \; run-shell -b 'if tmux list-windows -F "#{window_name}" | grep -Fxq "agent-gemini"; then tmux select-window -t agent-gemini; else tmux new-window -d -n agent-gemini -c "#{pane_current_path}"; fi; tmux send-keys -t agent-gemini.1 "agr" C-m'
 
 # -- Window
 bind-key -n C-S-Left swap-window -t -1 \; previous-window

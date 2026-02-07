@@ -596,14 +596,32 @@ ao() { dot_agent_cmd codex "$@"; }   # OpenAI
 ag() { dot_agent_cmd gemini "$@"; }  # Google
 
 # Native resume entrypoints (no fzf; rely on each provider's built-in flow)
-aar() { dot_agent_cmd claude -r "$@"; }
-aor() { dot_agent_cmd codex resume "$@"; }
+aar() { dot_agent_cmd claude -c "$@"; }
+aor() {
+  if [[ "$#" -eq 0 ]]; then
+    dot_agent_cmd codex resume --last
+  else
+    dot_agent_cmd codex resume "$@"
+  fi
+}
 agr() {
   local target="${1:-latest}"
   dot_agent_cmd gemini --resume "$target"
 }
 
-unalias tl tx ts tsw tk tw aa ao ag ac aar aor agr 2>/dev/null
+lg() {
+  if ! command -v lazygit >/dev/null 2>&1; then
+    echo "lazygit not found in PATH. Install it (e.g. brew install lazygit)."
+    return 127
+  fi
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "lg must be run inside a Git repository."
+    return 1
+  fi
+  lazygit "$@"
+}
+
+unalias tl tx ts tsw tk tw aa ao ag ac aar aor agr lg 2>/dev/null
 
 dot_require_fzf() {
   if ! command -v fzf >/dev/null 2>&1; then
@@ -871,7 +889,7 @@ dot_tmux_start_watch_if_needed() {
 }
 
 # tw: expand default workspace windows in target session.
-# default windows: editor, agent, test, logs
+# default windows: editor, agent-claude, test, logs
 # pane roles:
 # - editor: code + shell
 # - test: watch + adhoc
@@ -898,7 +916,7 @@ tw() {
     dot_tmux_cmd send-keys -t "$editor_pane" "nvim ." C-m
   fi
 
-  dot_tmux_window_exists "$name" "agent" || dot_tmux_cmd new-window -d -t "$name" -n agent -c "$root"
+  dot_tmux_window_exists "$name" "agent-claude" || dot_tmux_cmd new-window -d -t "$name" -n agent-claude -c "$root"
   if ! dot_tmux_window_exists "$name" "test"; then
     dot_tmux_cmd new-window -d -t "$name" -n test -c "$root" || return 1
     created_test_window=1
@@ -915,9 +933,9 @@ tw() {
     dot_tmux_cmd select-pane -t "${name}:editor.2" -T shell 2>/dev/null
   fi
 
-  panes="$(dot_tmux_window_pane_count "${name}:agent")"
+  panes="$(dot_tmux_window_pane_count "${name}:agent-claude")"
   if [[ "$panes" -ge 1 ]]; then
-    dot_tmux_cmd select-pane -t "${name}:agent.1" -T agent 2>/dev/null
+    dot_tmux_cmd select-pane -t "${name}:agent-claude.1" -T agent-claude 2>/dev/null
   fi
 
   panes="$(dot_tmux_window_pane_count "${name}:test")"

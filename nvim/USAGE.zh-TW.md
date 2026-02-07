@@ -84,3 +84,30 @@
 5. 如果你看到 netrw 清單：確認不是舊 session，重開 nvim 測試
 6. 若出現 `Cannot close because an unnamed buffer is modified`：
    先按 `Enter`，再用 `:bd!` 丟棄未命名暫存 buffer，最後用 `<leader>e` 或 `:Neotree focus`
+
+## 6. tmux + Agent（Hybrid）
+
+### 主要規則
+- `大寫`：切到/建立專用 window（長任務主流程）
+- `小寫`：開 popup（臨時查詢）
+
+### 快捷鍵
+- `<prefix> + A`：`agent-claude` window（Claude 主力）
+- `<prefix> + a`：Claude popup
+- `<prefix> + O`：`agent-codex` window
+- `<prefix> + o`：Codex popup
+- `<prefix> + G`：`agent-gemini` window
+- `<prefix> + g`：Gemini popup
+- `<prefix> + L`：`git` window（Lazygit）
+- `<prefix> + l`：Lazygit popup
+- `<prefix> + R` 然後 `A/O/G`：resume（`aar/aor/agr`）
+
+### 空間拓撲（建議）
+- 1 個 worktree 對應 1 個 tmux session
+- 預設 windows：`editor`、`agent-claude`、`test`、`logs`
+- `agent-codex`、`agent-gemini`、`git` 採 lazy create（按 `O/G/L` 才建立）
+- pane 只做短暫輔助，不作多 agent 長駐
+
+### nvim 與 lazygit 分工（tmux-only）
+- `nvim`：編輯、Diffview、gitsigns（主流程）
+- `lazygit`：commit 編排、rebase/cherry-pick（僅透過 tmux `L/l` 進入）
