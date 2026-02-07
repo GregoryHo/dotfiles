@@ -1,4 +1,7 @@
 .netrwhist
+.DS_Store
+.nvimlog
+.worktrees/
 
 # Local configuration files (contain sensitive tokens/secrets)
 *.local
