@@ -16,9 +16,9 @@ contains_line() {
 
 contains_any_optional_source() {
   local file="$1"
-  awk '
-    index($0, ". \"$HOME/.local/bin/env\"") ||
-    index($0, ". \"$HOME/.cargo/env\"") {
+  awk -v p1='. "$HOME/.local/bin/env"' \
+      -v p2='. "$HOME/.cargo/env"' '
+    index($0, p1) || index($0, p2) {
       found=1
     }
     END { exit found ? 0 : 1 }
@@ -61,6 +61,7 @@ fi
 
 printf '4) Validate idempotent shared env behavior (bash/zsh)...\n'
 bash --noprofile --norc -c "
+  set -e
   source '$SHARED_ENV'
   path_before=\"\$PATH\"
   source '$SHARED_ENV'
@@ -71,6 +72,7 @@ bash --noprofile --norc -c "
 "
 
 zsh -f -c "
+  set -e
   source '$SHARED_ENV'
   path_before=\"\$PATH\"
   source '$SHARED_ENV'

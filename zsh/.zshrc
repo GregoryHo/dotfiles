@@ -371,15 +371,5 @@ fpath=(/Users/gregho/.docker/completions $fpath)
 # GVM disabled - causing cd slowdown
 # [[ -s "/Users/gregho/.gvm/scripts/gvm" ]] && source "/Users/gregho/.gvm/scripts/gvm"
 
-# opencode
-export PATH=/Users/gregho/.opencode/bin:$PATH
-
 # bun completions
 [ -s "/Users/gregho/.bun/_bun" ] && source "/Users/gregho/.bun/_bun"
-
-# bun
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
-
-# Added by Antigravity
-export PATH="/Users/gregho/.antigravity/antigravity/bin:$PATH"
