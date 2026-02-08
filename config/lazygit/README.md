@@ -46,4 +46,5 @@ This directory contains the tracked lazygit profile used by this dotfiles repo.
 ## Deployment
 
 Symlinked to `~/.config/lazygit/` (directory symlink, same pattern as tmux-powerline).
+Requires `XDG_CONFIG_HOME` (set in `shell/.env.shared.sh`) so lazygit uses `~/.config/` instead of `~/Library/Application Support/`.
 lazygit writes `state.yml` here at runtime; it's gitignored.
