@@ -7,6 +7,9 @@ if [ -n "${DOTFILES_ENV_SHARED_LOADED:-}" ]; then
 fi
 export DOTFILES_ENV_SHARED_LOADED=1
 
+# XDG base directories
+export XDG_CONFIG_HOME="$HOME/.config"
+
 # Core PATH
 export PATH="/opt/homebrew/bin:$PATH"
 export PATH="$PATH:/usr/local/bin"

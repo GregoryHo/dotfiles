@@ -22,7 +22,7 @@ There is no build system, linter, or test framework beyond this script. Run it a
 
 ## Shell Environment Architecture
 
-All shared exports (PATH, Homebrew mirrors, Android, Java, Go, Flutter, Cargo) live in a single source of truth:
+All shared exports (PATH, XDG_CONFIG_HOME, Homebrew mirrors, Android, Java, Go, Flutter, Cargo) live in a single source of truth:
 
 ```
 shell/.env.shared.sh          # Idempotent (DOTFILES_ENV_SHARED_LOADED guard)
@@ -65,11 +65,11 @@ Most tools follow: base config + `.local` override.
 
 ## Config Directory (`config/`)
 
-XDG-style configs deployed via `stow config` to `~/.config/`:
+XDG-style configs in `~/.config/`. Lazygit and tmux-powerline are directory symlinks; karabiner is deployed separately.
 
 | Tool            | Path                        | Notes                                    |
 |-----------------|-----------------------------|------------------------------------------|
-| Lazygit         | `config/lazygit/`           | Tokyonight Storm theme, safety defaults  |
+| Lazygit         | `config/lazygit/`           | Tokyonight Storm theme, safety defaults; `state.yml` gitignored |
 | Karabiner       | `config/karabiner/`         | macOS keyboard remapping rules           |
 | tmux-powerline  | `config/tmux-powerline/`    | Custom theme + segment config (see Tmux) |
 
