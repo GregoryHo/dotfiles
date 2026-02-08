@@ -5,3 +5,6 @@
 
 # Local configuration files (contain sensitive tokens/secrets)
 *.local
+
+# Lazygit runtime state (auto-generated, not user config)
+config/lazygit/state.yml
