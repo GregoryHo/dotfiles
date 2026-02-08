@@ -388,8 +388,8 @@ add-zsh-hook chpwd load-nvmrc
 load-nvmrc
 
 # Git worktree commands
-# mnemonic: [W]ork[T]ree [A]dd/[L]ist/[R]emove/[G]o
-# Location: .worktrees/ inside project (tool-agnostic)
+# mnemonic: [W]ork[T]ree [A]dd/[L]ist/[R]emove/[G]o/[P]rune
+# Location: sibling directory <repo>-worktrees/ (tool-agnostic)
 
 # Helper: machine rows for worktree pickers.
 # columns: 1=path 2=marker(* main) 3=name 4=branch
@@ -410,18 +410,27 @@ dot_wt_pretty_rows() {
   dot_wt_rows | awk -F'\t' '{printf "%s\t%-2s %-16s %-20s %s\n", $1, $2, $3, $4, $1}'
 }
 
+# Helper: resolve sibling worktree directory path
+# Returns: /path/to/repo-worktrees
+dot_wt_sibling_dir() {
+  local root=$(git rev-parse --show-toplevel)
+  local base=$(basename "$root")
+  local parent=$(dirname "$root")
+  echo "${parent}/${base}-worktrees"
+}
+
 # List worktrees
 alias wtl='git worktree list'
 
 # Add worktree with new branch
-# Usage: wta <name> → creates .worktrees/<name> at feature/<name> branch
+# Usage: wta <name> → creates <repo>-worktrees/<name> at feature/<name> branch
 wta() {
   local name="$1"
   [[ -z "$name" ]] && { echo "Usage: wta <name>"; return 1; }
 
-  local root=$(git rev-parse --show-toplevel)
-  mkdir -p "${root}/.worktrees"
-  git worktree add "${root}/.worktrees/${name}" -b "feature/${name}" && cd "${root}/.worktrees/${name}"
+  local wt_dir=$(dot_wt_sibling_dir)
+  mkdir -p "$wt_dir"
+  git worktree add "${wt_dir}/${name}" -b "feature/${name}" && cd "${wt_dir}/${name}"
 }
 
 # Add worktree with fzf branch selection
@@ -429,7 +438,7 @@ wta() {
 wtab() {
   dot_require_fzf || return 1
 
-  local rows branch root name local_branch
+  local rows branch wt_dir name local_branch
   rows="$(
     {
       git for-each-ref --sort=-committerdate refs/heads \
@@ -453,23 +462,23 @@ wtab() {
   )"
   [[ -z "$branch" ]] && return
 
-  root=$(git rev-parse --show-toplevel)
+  wt_dir=$(dot_wt_sibling_dir)
   name="${branch##*/}"
-  mkdir -p "${root}/.worktrees"
+  mkdir -p "$wt_dir"
 
   if [[ "$branch" == origin/* ]]; then
     local_branch="${branch#origin/}"
     name="$local_branch"
     if git show-ref --verify --quiet "refs/heads/$local_branch"; then
-      git worktree add "${root}/.worktrees/${name}" "$local_branch" &&
-        cd "${root}/.worktrees/${name}"
+      git worktree add "${wt_dir}/${name}" "$local_branch" &&
+        cd "${wt_dir}/${name}"
     else
-      git worktree add "${root}/.worktrees/${name}" -b "$local_branch" --track "$branch" &&
-        cd "${root}/.worktrees/${name}"
+      git worktree add "${wt_dir}/${name}" -b "$local_branch" --track "$branch" &&
+        cd "${wt_dir}/${name}"
     fi
   else
-    git worktree add "${root}/.worktrees/${name}" "$branch" &&
-      cd "${root}/.worktrees/${name}"
+    git worktree add "${wt_dir}/${name}" "$branch" &&
+      cd "${wt_dir}/${name}"
   fi
 }
 
@@ -491,6 +500,29 @@ wtr() {
   [[ -z "$wt_path" ]] && return
 
   git worktree remove "$wt_path"
+}
+
+# Prune empty worktree sibling directory
+# mnemonic: [W]ork[T]ree [P]rune
+wtp() {
+  local wt_dir=$(dot_wt_sibling_dir)
+
+  if [[ ! -d "$wt_dir" ]]; then
+    echo "No worktree directory found: $wt_dir"
+    return 0
+  fi
+
+  # Check if directory is empty (ignoring .DS_Store and other hidden files)
+  local content=$(find "$wt_dir" -mindepth 1 -maxdepth 1 ! -name '.DS_Store' 2>/dev/null)
+
+  if [[ -z "$content" ]]; then
+    rm -rf "$wt_dir"
+    echo "✓ Removed empty directory: $wt_dir"
+  else
+    echo "Directory not empty: $wt_dir"
+    echo "Contents:"
+    ls -la "$wt_dir"
+  fi
 }
 
 # Go to worktree with fzf selection

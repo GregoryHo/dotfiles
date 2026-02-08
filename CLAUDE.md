@@ -90,7 +90,7 @@ Helper functions that produce picker rows are prefixed `dot_` (e.g., `dot_git_lo
 
 **Git**: `gla` (interactive log), `gcob`/`gcorb` (checkout local/remote branch), `gdb`/`gdfb` (delete branch safe/force)
 
-**Worktree** (`wt*`): `wta` (add), `wtab` (add from branch picker), `wtr` (remove), `wtg` (go), `wtb` (go to base), `wtm` (merge), `wtc` (add + env init + launch agent). Worktrees go in `.worktrees/` inside the project root.
+**Worktree** (`wt*`): `wta` (add), `wtab` (add from branch picker), `wtr` (remove), `wtg` (go), `wtb` (go to base), `wtm` (merge), `wtp` (prune empty directories), `wtc` (add + env init + launch agent). Worktrees go in sibling directory `<repo>-worktrees/`.
 
 **Tmux** (`t*`): `tl` (list sessions), `tx` (create/attach), `ts` (fzf session switch), `tk` (kill), `tsw` (window switch), `tw` (expand workspace: editor/agent/test/logs windows), `tsp` (pane switch)
 
