@@ -8,9 +8,17 @@ Personal dotfiles for a macOS (ARM) development environment. Each tool owns a di
 
 ## Deployment
 
-Uses GNU Stow. Each top-level directory (e.g. `zsh/`, `tmux/`, `nvim/`, `config/`) is a stow package.
-Files are symlinked relative to `$HOME`. For XDG configs, the `config/` package maps to `~/.config/`.
-Example: `stow zsh` symlinks `zsh/.zshrc` → `~/.zshrc`; `stow config` symlinks `config/tmux-powerline/` → `~/.config/tmux-powerline/`.
+Uses GNU Stow. Each top-level directory is a stow package, symlinked relative to `$HOME`. For XDG configs, the `config/` package maps to `~/.config/`.
+
+Stow packages: `bash/`, `config/`, `fzf/`, `git/`, `nvim/`, `shell/` (not stowed — sourced), `tmux/`, `vim/`, `zsh/`
+
+```bash
+# Deploy all packages (from repo root)
+stow bash config fzf git nvim tmux vim zsh
+
+# Re-deploy a single package (adopt existing files)
+stow -R zsh
+```
 
 ## Validation
 
@@ -50,6 +58,7 @@ This ensures both login and non-login shells (zsh and bash) get the same environ
 - **Guard optional sources** with `[ -f "..." ] && . "..."` — never source a file unconditionally.
 - **Keep `.env.shared.sh` idempotent** — sourcing it twice must not change PATH or variables.
 - Run `shell/test-shell-startup.sh` after changes to verify.
+- See `shell/SHELL_STARTUP_CONTRACT.md` for the full startup responsibility matrix.
 
 ## Configuration Override Pattern
 
@@ -62,6 +71,8 @@ Most tools follow: base config + `.local` override.
 | Vim   | `vim/.vimrc`          | `vim/.vimrc.local`       |
 | Vim plugins | `vim/.vimrc.bundles` | `vim/.vimrc.bundles.local` |
 | Tmux  | Oh My Tmux base       | `tmux/.tmux.conf.local`  |
+| Git   | `git/.gitconfig`      | —                        |
+| FZF   | `fzf/.fzf.zsh`, `fzf/.fzf.bash` | —             |
 
 ## Config Directory (`config/`)
 
@@ -72,6 +83,8 @@ XDG-style configs in `~/.config/`. Lazygit and tmux-powerline are directory syml
 | Lazygit         | `config/lazygit/`           | Tokyonight Storm theme, safety defaults; `state.yml` gitignored |
 | Karabiner       | `config/karabiner/`         | macOS keyboard remapping rules           |
 | tmux-powerline  | `config/tmux-powerline/`    | Custom theme + segment config (see Tmux) |
+| Neofetch        | `config/neofetch/`          | Custom ASCII art + display config        |
+| Menus           | `config/menus/`             | XDG application menu merge rules         |
 
 ## FZF Helper Pattern
 
