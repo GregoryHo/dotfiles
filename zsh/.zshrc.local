@@ -366,7 +366,7 @@ load-nvmrc() {
   done
 
   if [ -n "$nvmrc_path" ]; then
-    _nvm_lazy_load
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
     local nvmrc_node_version
     nvmrc_node_version=$(nvm version "$(cat "${nvmrc_path}")")
 

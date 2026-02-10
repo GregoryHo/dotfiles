@@ -111,7 +111,7 @@ Helper functions that produce picker rows are prefixed `dot_` (e.g., `dot_git_lo
 
 ## NVM Lazy Loading
 
-In zsh, `nvm`/`node`/`npm`/`npx` are stub functions that self-replace on first call via `_nvm_lazy_load()`. The Oh My Zsh nvm/node/npm plugins are disabled in favor of this. The `load-nvmrc` chpwd hook auto-switches node versions based on `.nvmrc` files.
+In zsh, `nvm`/`node`/`npm`/`npx` are stub functions that self-replace on first call by inlining `. "$NVM_DIR/nvm.sh"`. The Oh My Zsh nvm/node/npm plugins are disabled in favor of this. The `load-nvmrc` chpwd hook auto-switches node versions based on `.nvmrc` files.
 
 ## Tmux
 

@@ -224,30 +224,29 @@ source $ZSH/oh-my-zsh.sh
 # User configuration
 
 # NVM lazy loading
+# Stub functions that self-replace on first call. Each stub inlines the nvm
+# sourcing directly so the helper is self-contained (avoids issues with
+# underscore-prefixed functions not surviving shell snapshot serialisation).
 export NVM_DIR="$HOME/.nvm"
-_nvm_lazy_load() {
-  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-}
-
 
 nvm() {
   unset -f nvm node npm npx
-  _nvm_lazy_load
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
   nvm "$@"
 }
 node() {
   unset -f nvm node npm npx
-  _nvm_lazy_load
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
   node "$@"
 }
 npm() {
   unset -f nvm node npm npx
-  _nvm_lazy_load
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
   npm "$@"
 }
 npx() {
   unset -f nvm node npm npx
-  _nvm_lazy_load
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
   npx "$@"
 }
 
