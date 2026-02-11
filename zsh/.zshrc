@@ -223,31 +223,40 @@ source $ZSH/oh-my-zsh.sh
 
 # User configuration
 
-# NVM lazy loading
-# Stub functions that self-replace on first call. Each stub inlines the nvm
-# sourcing directly so the helper is self-contained (avoids issues with
-# underscore-prefixed functions not surviving shell snapshot serialisation).
+# NVM — eager PATH, lazy nvm command
+# Replicate what `nvm use --silent <default>` does without sourcing the full
+# nvm.sh (3500+ lines of shell functions). This makes ALL globally-installed
+# npm tools (mgrep, etc.) available immediately.
+#
+# What we replicate from `nvm use` (nvm.sh lines 2935-2955):
+#   1. PATH     — add default node version's bin
+#   2. NVM_BIN  — export for node-gyp / third-party tools
+#   3. MANPATH  — add default node version's share/man
+#   4. hash -r  — flush shell command cache
 export NVM_DIR="$HOME/.nvm"
 
+# Eagerly resolve default node version and set up environment
+if [ -s "$NVM_DIR/alias/default" ]; then
+  _nvm_ver=$(cat "$NVM_DIR/alias/default")
+  _nvm_ver="${_nvm_ver#v}"
+  # Exact match first (e.g. v22.12.0), glob fallback for partial versions (e.g. 22)
+  _nvm_node_dir="$NVM_DIR/versions/node/v${_nvm_ver}"
+  [ -d "$_nvm_node_dir" ] || _nvm_node_dir=$(ls -d "$NVM_DIR/versions/node/v${_nvm_ver}"* 2>/dev/null | sort -V | tail -1)
+  if [ -d "$_nvm_node_dir" ]; then
+    export PATH="$_nvm_node_dir/bin:$PATH"
+    export NVM_BIN="$_nvm_node_dir/bin"
+    export MANPATH="$_nvm_node_dir/share/man${MANPATH:+:$MANPATH}"
+    hash -r 2>/dev/null
+  fi
+  unset _nvm_ver _nvm_node_dir
+fi
+
+# Lazy load nvm command only (the expensive part: ~80 function definitions)
+# --no-use skips nvm_auto("use") since we already set up the environment above.
 nvm() {
-  unset -f nvm node npm npx
-  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+  unset -f nvm
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" --no-use
   nvm "$@"
-}
-node() {
-  unset -f nvm node npm npx
-  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-  node "$@"
-}
-npm() {
-  unset -f nvm node npm npx
-  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-  npm "$@"
-}
-npx() {
-  unset -f nvm node npm npx
-  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-  npx "$@"
 }
 
 # zsh-highlight
