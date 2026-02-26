@@ -71,8 +71,12 @@ Most tools follow: base config + `.local` override.
 | Vim   | `vim/.vimrc`          | `vim/.vimrc.local`       |
 | Vim plugins | `vim/.vimrc.bundles` | `vim/.vimrc.bundles.local` |
 | Tmux  | Oh My Tmux base       | `tmux/.tmux.conf.local`  |
-| Git   | `git/.gitconfig`      | —                        |
+| Git   | `git/.gitconfig`      | `~/.gitconfig.local`     |
 | FZF   | `fzf/.fzf.zsh`, `fzf/.fzf.bash` | —             |
+
+### Git Identity Overrides
+
+GitHub identity is tracked in `git/.gitconfig-github` (public info, safe to commit). Work identities (e.g. GitLab) are configured via `~/.gitconfig.local` using `includeIf` directives that point to untracked identity files like `~/.gitconfig-gitlab`. This keeps work directory paths and corporate identities out of the public repo.
 
 ## Config Directory (`config/`)
 

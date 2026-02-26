@@ -1,0 +1,13 @@
+[user]
+	name = GregoryHo
+	email = greghojob@gmail.com
+	signingkey = ~/.ssh/github-greg.pub
+
+[gpg]
+	format = ssh
+
+[gpg "ssh"]
+	allowedSignersFile = ~/.ssh/allowed_signers
+
+[commit]
+	gpgsign = true

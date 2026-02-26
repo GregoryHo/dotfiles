@@ -1,3 +1,23 @@
-# OS generate files
+# macOS
 .DS_Store
-.DS_Store?
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Editors
+*.swp
+*.swo
+*~
+.netrwhist
+.idea/
+.vscode/
+*.sublime-workspace
+
+# Merge
+*.orig

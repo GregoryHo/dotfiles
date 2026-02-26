@@ -1,36 +1,59 @@
-[user]
-	name = gregory_ho
-	email = gregory_ho@tengyuntech.com
+# --- Identity ---
+
+[includeIf "gitdir:~/GitHub/"]
+	path = ~/.gitconfig-github
+
+[include]
+	path = ~/.gitconfig.local
+
+# --- Core ---
+
+[core]
+	autocrlf = input
+	excludesfile = ~/.gitignore_global
+	editor = vim
+	whitespace = tabwidth=4, space-before-tab, indent-with-non-tab, blank-at-eol, blank-at-eof
+	pager = delta
+
+[apply]
+	whitespace = nowarn
+
+# --- Credentials ---
 
 [credential]
 	helper = osxkeychain
 
-[core]
-	autocrlf = input
-	excludesfile = .gitignore_global
-	editor = vim
-	whitespace = tabwidth=4, space-before-tab, indent-with-non-tab, blank-at-eol, blank-at-eof
-  pager = delta
+[credential "https://github.com"]
+	helper =
+	helper = !gh auth git-credential
+
+[credential "https://gist.github.com"]
+	helper =
+	helper = !gh auth git-credential
+
+# --- Pager / Delta ---
 
 [delta]
-  true-color = always
-  theme = Monokai Extended
-  plus-style  = syntax "#012800"
-  minus-style = syntax "#340001"
-  plus-emph-style  = syntax bold "#012800"
-  minus-emph-style = syntax bold "#340001"
+	true-color = always
+	theme = Monokai Extended
+	plus-style = syntax "#012800"
+	minus-style = syntax "#340001"
+	plus-emph-style = syntax bold "#012800"
+	minus-emph-style = syntax bold "#340001"
 
 [interactive]
-  diffFilter = delta --color-only
+	diffFilter = delta --color-only
+
+# --- Color ---
 
 [color]
 	branch = auto
 	diff = auto
 	status = always
-  showbranch = auto
-  interactive = auto
-  ui = true
-  pager = true
+	showbranch = auto
+	interactive = auto
+	ui = true
+	pager = true
 
 [color "branch"]
 	current = green bold
@@ -48,46 +71,35 @@
 	changed = yellow bold
 	untracked = red bold
 
-[apply]
-	whitespace = nowarn
+# --- Diff ---
 
 [diff]
-  # Use better, descriptive initials (c, i, w) instead of a/b.
-  mnemonicPrefix = true
-  # Show renames/moves as such
-  renames = true
-  # When using --word-diff, assume --word-diff-regex=.
-  wordRegex = .
-  # Display submodule-related information (commit listings)
-  submodule = log
-  # Use VIM
-  tool = vimdiff
-
-[grep]
-  break = true
-  heading = true
-  lineNumber = true
-  # Consider most regexes to be ERE
-  extendedRegexp = true
-
-[log]
-  # Use abbrev SHAs whenever possible/relevant instead of full 40 chars
-  abbrevCommit = true
-  # Automatically --follow when given a single path
-  follow = true
-  # Disable decorate for reflog
-  # (because there is no dedicated `reflog` section available)
-  decorate = false
+	mnemonicPrefix = true
+	renames = true
+	wordRegex = .
+	submodule = log
+	tool = vimdiff
 
 [difftool]
-  prompt = false
+	prompt = false
+
+# --- Search ---
+
+[grep]
+	break = true
+	heading = true
+	lineNumber = true
+	extendedRegexp = true
+
+# --- Log ---
+
+[log]
+	abbrevCommit = true
+	follow = true
+	decorate = false
+
+# --- Aliases ---
 
 [alias]
-  log-all = log --all --decorate --oneline --graph
+	log-all = log --all --decorate --oneline --graph
 	log-all-time = log --all --decorate --graph --abbrev-commit --format=format:'%C(bold blue)%h%C(reset) - %C(bold cyan)%aD%C(reset) %C(bold green)(%ar)%C(reset)%C(bold yellow)%d%C(reset)%n'' %C(white)%s%C(reset) %C(dim white)- %an%C(reset)'
-[credential "https://github.com"]
-	helper = 
-	helper = !/opt/homebrew/bin/gh auth git-credential
-[credential "https://gist.github.com"]
-	helper = 
-	helper = !/opt/homebrew/bin/gh auth git-credential
