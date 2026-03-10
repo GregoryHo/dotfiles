@@ -440,19 +440,19 @@ bind-key -n M-l next-window
 
 # prefix + A/a: Anthropic (aa)
 bind-key A run-shell -b 'if tmux list-windows -F "#{window_name}" | grep -Fxq "agent-claude"; then tmux select-window -t agent-claude; else tmux new-window -d -n agent-claude -c "#{pane_current_path}"; tmux send-keys -t agent-claude.1 "aa" C-m; tmux select-window -t agent-claude; fi'
-bind-key a display-popup -E -w 90% -h 85% "$SHELL -lic 'aa'"
+bind-key a display-popup -E -w 90% -h 85% -d '#{pane_current_path}' "$SHELL -lic 'aa'"
 
 # prefix + O/o: OpenAI (ao)
 bind-key O run-shell -b 'if tmux list-windows -F "#{window_name}" | grep -Fxq "agent-codex"; then tmux select-window -t agent-codex; else tmux new-window -d -n agent-codex -c "#{pane_current_path}"; tmux send-keys -t agent-codex.1 "ao" C-m; tmux select-window -t agent-codex; fi'
-bind-key o display-popup -E -w 90% -h 85% "$SHELL -lic 'ao'"
+bind-key o display-popup -E -w 90% -h 85% -d '#{pane_current_path}' "$SHELL -lic 'ao'"
 
 # prefix + G/g: Google (ag)
 bind-key G run-shell -b 'if tmux list-windows -F "#{window_name}" | grep -Fxq "agent-gemini"; then tmux select-window -t agent-gemini; else tmux new-window -d -n agent-gemini -c "#{pane_current_path}"; tmux send-keys -t agent-gemini.1 "ag" C-m; tmux select-window -t agent-gemini; fi'
-bind-key g display-popup -E -w 90% -h 85% "$SHELL -lic 'ag'"
+bind-key g display-popup -E -w 90% -h 85% -d '#{pane_current_path}' "$SHELL -lic 'ag'"
 
 # prefix + L/l: Lazygit (lg)
 bind-key L run-shell -b 'if tmux list-windows -F "#{window_name}" | grep -Fxq "git"; then tmux select-window -t git; else tmux new-window -d -n git -c "#{pane_current_path}"; tmux send-keys -t git.1 "lg" C-m; tmux select-window -t git; fi'
-bind-key l display-popup -E -w 90% -h 85% "$SHELL -lic 'lg'"
+bind-key l display-popup -E -w 90% -h 85% -d '#{pane_current_path}' "$SHELL -lic 'lg'"
 
 # Resume mode (native provider resume, no fzf)
 # prefix + R then A/O/G
