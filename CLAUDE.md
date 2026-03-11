@@ -117,6 +117,8 @@ Helper functions that produce picker rows are prefixed `dot_` (e.g., `dot_git_lo
 
 In zsh, `nvm`/`node`/`npm`/`npx` are stub functions that self-replace on first call by inlining `. "$NVM_DIR/nvm.sh"`. The Oh My Zsh nvm/node/npm plugins are disabled in favor of this. The `load-nvmrc` chpwd hook auto-switches node versions based on `.nvmrc` files.
 
+Global packages that should persist across Node versions are listed in `nvm-default-packages` (symlinked to `~/.nvm/default-packages`). NVM auto-installs these on every `nvm install`. Edit this file when adding/removing persistent global tools.
+
 ## Tmux
 
 - Base framework: Oh My Tmux (`.tmux.conf` from gpakosz)
