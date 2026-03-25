@@ -592,7 +592,7 @@ wtm() {
 # mnemonic: [W]ork[T]ree [C]ode (or Claude/Codex/etc)
 wtc() {
   local name="$1"
-  local agent="${2:-aa}"  # default unified entrypoint; can pass aa/ao/ag/opencode/etc.
+  local agent="${2:-claude}"  # default agent; can pass claude/codex/gemini/etc.
 
   wta "$name" || return 1
 
@@ -611,41 +611,24 @@ wtc() {
   $agent
 }
 
-# Unified AI agent entrypoints (shared by shell and tmux popup)
-dot_agent_cmd() {
-  local cmd="$1"
-  shift
-  if ! command -v "$cmd" >/dev/null 2>&1; then
-    echo "$cmd not found in PATH"
-    return 127
-  fi
-  "$cmd" "$@"
-}
-
-aa() { dot_agent_cmd claude "$@"; }  # Anthropic
-ac() { aa "$@"; }                 # Backward-compatible alias
-ao() { dot_agent_cmd codex "$@"; }   # OpenAI
-ag() { dot_agent_cmd gemini "$@"; }  # Google
-
-# Native resume entrypoints (no fzf; rely on each provider's built-in flow)
-aar() { dot_agent_cmd claude -c "$@"; }
-aor() {
+# Continue most recent agent session
+aac() { claude -c "$@"; }
+aoc() {
   if [[ "$#" -eq 0 ]]; then
-    dot_agent_cmd codex resume --last
+    codex resume --last
   else
-    dot_agent_cmd codex resume "$@"
+    codex resume "$@"
   fi
 }
-agr() {
-  local target="${1:-latest}"
-  dot_agent_cmd gemini --resume "$target"
+agc() {
+  if [[ "$#" -eq 0 ]]; then
+    gemini --resume latest
+  else
+    gemini --resume "$@"
+  fi
 }
 
 lg() {
-  if ! command -v lazygit >/dev/null 2>&1; then
-    echo "lazygit not found in PATH. Install it (e.g. brew install lazygit)."
-    return 127
-  fi
   if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     echo "lg must be run inside a Git repository."
     return 1
@@ -653,7 +636,7 @@ lg() {
   lazygit "$@"
 }
 
-unalias tl tx ts tsw tk tw aa ao ag ac aar aor agr lg 2>/dev/null
+unalias tl tx ts tsw tk tw aac aoc agc lg 2>/dev/null
 
 dot_require_fzf() {
   if ! command -v fzf >/dev/null 2>&1; then
