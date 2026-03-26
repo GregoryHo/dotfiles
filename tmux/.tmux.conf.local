@@ -465,6 +465,9 @@ bind-key -T agent_continue A run-shell -b 'p="#{?@project_path,#{@project_path},
 bind-key -T agent_continue O run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; tmux new-window -n agent-codex -c "$p"; tmux set-option -w @project_path "$p"; tmux send-keys aoc C-m'
 bind-key -T agent_continue G run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; tmux new-window -n agent-gemini -c "$p"; tmux set-option -w @project_path "$p"; tmux send-keys agc C-m'
 
+# prefix + T: agent dashboard (fzf picker in popup)
+bind-key T run-shell -b 'tmux display-popup -E -w 80% -h 70% "$SHELL -lic \"tsa\""'
+
 # -- Window
 bind-key -n C-S-Left swap-window -t -1 \; previous-window
 bind-key -n C-S-Right swap-window -t +1 \; next-window

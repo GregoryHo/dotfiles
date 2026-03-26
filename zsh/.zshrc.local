@@ -636,7 +636,7 @@ lg() {
   lazygit "$@"
 }
 
-unalias tl tx ts tsw tk tw aac aoc agc lg 2>/dev/null
+unalias tl tx ts tsw tk tw tsa tla aac aoc agc lg 2>/dev/null
 
 dot_require_fzf() {
   if ! command -v fzf >/dev/null 2>&1; then
@@ -697,6 +697,89 @@ dot_tmux_window_pretty_rows() {
       if (length(name) > 16) name=substr(name, 1, 13) "..."
       printf "%s\t%-2s %-14s %3s %-16s %5s\n", $1, mark, $2, $3, name, $5
     }'
+}
+
+dot_agent_pane_rows() {
+  local now
+  now="$(date +%s)"
+
+  dot_tmux_cmd list-panes -a \
+    -F $'#{session_name}:#{window_index}.#{pane_index}\t#{window_name}\t#{pane_current_command}\t#{@project_path}\t#{pane_current_path}\t#{window_activity}' 2>/dev/null |
+    awk -F'\t' -v now="$now" -v home="$HOME" -v user_shell="$(basename "$SHELL")" '
+    {
+      target=$1; wname=$2; cmd=$3; projpath=$4; cwd=$5; activity=$6
+      agent=""
+      if (wname ~ /^agent-claude/)      agent="claude"
+      else if (wname ~ /^agent-codex/)  agent="codex"
+      else if (wname ~ /^agent-gemini/) agent="gemini"
+      if (agent == "") {
+        if (cmd ~ /^claude/)  agent="claude"
+        else if (cmd ~ /^codex/)   agent="codex"
+        else if (cmd ~ /^gemini/)  agent="gemini"
+      }
+      if (agent == "") next
+
+      alive = (cmd != user_shell) ? 1 : 0
+
+      split(target, t, ":")
+      session = t[1]
+
+      p = (projpath != "" ? projpath : cwd)
+      n = split(p, parts, "/")
+      project = (n > 0 ? parts[n] : p)
+      if (length(project) > 30) project = substr(project, 1, 27) "..."
+
+      idle = (activity != "" && activity > 0) ? now - activity : 0
+      if (!alive)            status = "exited"
+      else if (idle < 10)    status = "active"
+      else if (idle < 300)   status = "busy"
+      else                   status = "idle"
+
+      if (idle < 60)        idlefmt = idle "s"
+      else if (idle < 3600) idlefmt = int(idle/60) "m"
+      else if (idle < 86400) idlefmt = int(idle/3600) "h"
+      else                  idlefmt = int(idle/86400) "d"
+
+      cwd_short = cwd
+      if (home != "" && substr(cwd_short, 1, length(home)) == home)
+        cwd_short = "~" substr(cwd_short, length(home) + 1)
+      if (length(cwd_short) > 40) cwd_short = "..." substr(cwd_short, length(cwd_short) - 36)
+
+      printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", target, agent, session, project, status, idlefmt, cwd_short
+    }'
+}
+
+dot_agent_pane_pretty_rows() {
+  local c_claude=$'\033[35m' c_codex=$'\033[32m' c_gemini=$'\033[34m'
+  local c_active=$'\033[32m' c_busy=$'\033[33m' c_idle=$'\033[90m' c_exited=$'\033[31m'
+  local c_reset=$'\033[0m'
+
+  dot_agent_pane_rows |
+    while IFS=$'\t' read -r target agent session project astate idle cwd; do
+      local c_agent="" icon="" c_st=""
+      case "$agent" in
+        claude) c_agent="$c_claude" ;;
+        codex)  c_agent="$c_codex" ;;
+        gemini) c_agent="$c_gemini" ;;
+      esac
+      case "$astate" in
+        active) c_st="$c_active" icon="●" ;;
+        busy)   c_st="$c_busy"   icon="◉" ;;
+        idle)   c_st="$c_idle"   icon="○" ;;
+        exited) c_st="$c_exited" icon="✕" ;;
+      esac
+      if [[ "$astate" == "exited" ]]; then
+        printf '%s\t%s%s%s %s%-8s %-16s %-30s %-8s %5s  %s%s\n' \
+          "$target" "$c_exited" "$icon" "$c_reset" \
+          "$c_idle" "$agent" "$session" "$project" \
+          "$astate" "$idle" "$cwd" "$c_reset"
+      else
+        printf '%s\t%s%s%s %s%-8s%s %-16s %-30s %s%-8s%s %5s  %s\n' \
+          "$target" "$c_st" "$icon" "$c_reset" \
+          "$c_agent" "$agent" "$c_reset" "$session" "$project" \
+          "$c_st" "$astate" "$c_reset" "$idle" "$cwd"
+      fi
+    done
 }
 
 # tmux session control plane (works inside and outside tmux)
@@ -980,11 +1063,25 @@ tw() {
   dot_tmux_cmd select-window -t "$name:editor" 2>/dev/null
 }
 
-# tmux/fzf workspace helper
+dot_tmux_goto_pane() {
+  local target="$1"
+  local session="${target%%:*}"
+  local pane="${target##*.}"
+  local window="${target#*:}"
+  window="${window%.*}"
+
+  if [[ -n "$TMUX" ]]; then
+    dot_tmux_cmd switch-client -t "$session"
+    dot_tmux_cmd select-window -t "${session}:${window}"
+    dot_tmux_cmd select-pane -t "${session}:${window}.${pane}"
+  else
+    dot_tmux_cmd attach-session -t "${session}:${window}.${pane}"
+  fi
+}
+
 tsp() {
-  [[ -n "$TMUX" ]] || { echo "Not inside tmux"; return 1; }
   dot_require_fzf || return 1
-  local target session window pane
+  local target
   target="$(
     dot_tmux_pane_pretty_rows |
       dot_fzf_ui --delimiter=$'\t' --with-nth=2 --prompt='pane> ' \
@@ -992,13 +1089,61 @@ tsp() {
       cut -f1
   )"
   [[ -z "$target" ]] && return
+  dot_tmux_goto_pane "$target"
+}
 
-  session="${target%%:*}"         # e.g. "test"
-  pane="${target##*.}"            # e.g. "1"
-  window="${target#*:}"           # e.g. "4.1"
-  window="${window%.*}"           # e.g. "4"
+tsa() {
+  dot_require_fzf || return 1
 
-  dot_tmux_cmd switch-client -t "$session"
-  dot_tmux_cmd select-window -t "${session}:${window}"
-  dot_tmux_cmd select-pane -t "${session}:${window}.${pane}"
+  local rows target
+  local reload_cmd='source ~/.zshrc.local 2>/dev/null; dot_agent_pane_pretty_rows'
+  rows="$(dot_agent_pane_pretty_rows)"
+  if [[ -z "$rows" ]]; then
+    echo "No active agents. Launch with prefix+A/O/G."
+    read -sk1 '?Press any key to close...'
+    return 0
+  fi
+
+  local col_hdr
+  col_hdr="$(printf '  %-8s %-16s %-30s %-8s %5s  %s' type session project status idle cwd)"
+
+  local fzf_enter
+  fzf_enter='enter:transform:if [[ {fzf:prompt} =~ send ]]; then if [[ -n {q} ]]; then echo "execute-silent(tmux send-keys -t {1} -l {q}; tmux send-keys -t {1} Enter)+clear-query+enable-search+change-prompt(agent> )+reload-sync(___RELOAD___)"; else echo "clear-query+enable-search+change-prompt(agent> )"; fi; else echo accept; fi'
+  fzf_enter="${fzf_enter//___RELOAD___/$reload_cmd}"
+
+  target="$(
+    printf '%s\n' "$rows" |
+      dot_fzf_ui --height=100% --ansi --prompt='agent> ' --delimiter=$'\t' --with-nth=2 --accept-nth=1 \
+        --border-label=' ctrl-r=refresh  alt-s=send  ctrl-x=stop  alt-k=kill ' \
+        --header="$col_hdr" \
+        --preview='tmux capture-pane -t {1} -ep -S -200 2>/dev/null | sed "s/\x1b\[[?]*[0-9;]*[A-Za-ln-z]//g" || echo "No preview"' \
+        --preview-window=down:70%:wrap:follow \
+        --preview-label=' Agent Preview ' \
+        --listen 127.0.0.1:0 \
+        --bind "start:execute-silent(while sleep 2; do curl -sXPOST http://127.0.0.1:\$FZF_PORT -d refresh-preview 2>/dev/null || break; done &)" \
+        --bind 'ctrl-/:change-preview-window(down:80%:wrap:follow|down:70%:wrap:follow|hidden)' \
+        --bind "ctrl-r:reload-sync($reload_cmd)" \
+        --bind "ctrl-x:execute-silent(tmux send-keys -t {1} C-c)+reload-sync($reload_cmd)" \
+        --bind "alt-k:execute-silent(tmux kill-pane -t {1})+reload-sync($reload_cmd)" \
+        --bind 'alt-s:disable-search+clear-query+change-prompt(send> )' \
+        --bind "$fzf_enter" \
+        --bind 'esc:transform:[[ {fzf:prompt} =~ send ]] && echo "clear-query+enable-search+change-prompt(agent> )" || echo abort'
+  )"
+  [[ -z "$target" ]] && return
+  dot_tmux_goto_pane "$target"
+}
+
+tla() {
+  local rows
+  rows="$(dot_agent_pane_rows)"
+  if [[ -z "$rows" ]]; then
+    echo "No active agents. Launch with prefix+A/O/G."
+    return 0
+  fi
+
+  printf '%-8s %-16s %-30s %-8s %5s  %s\n' "type" "session" "project" "status" "idle" "cwd"
+  printf '%s\n' "$rows" |
+    awk -F'\t' '{
+      printf "%-8s %-16s %-30s %-8s %5s  %s\n", $2, $3, $4, $5, $6, $7
+    }'
 }
