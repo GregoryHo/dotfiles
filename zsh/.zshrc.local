@@ -19,6 +19,16 @@ alias rm='echo "Foce add option -i. (**Warning** addtional -f will override this
 #  fi
 #}
 
+# zoxide (frecency-based cd replacement)
+if command -v zoxide >/dev/null 2>&1; then
+  eval "$(zoxide init zsh)"
+fi
+
+# direnv (per-project .envrc auto-load)
+if command -v direnv >/dev/null 2>&1; then
+  eval "$(direnv hook zsh)"
+fi
+
 # Homebrew
 # Shared fzf UI defaults for shell pickers
 dot_fzf_ui() {
@@ -637,6 +647,13 @@ lg() {
 }
 
 unalias tl tx ts tsw tk tw tsa tla aac aoc agc lg 2>/dev/null
+
+dot_notify_agent() {
+  local agent="${1:-agent}" project="${2:-}"
+  local name="${project##*/}"
+  [[ -z "$name" ]] && name="$agent"
+  osascript -e "display notification \"${agent} finished in ${name}\" with title \"Agent Complete\" sound name \"Glass\"" 2>/dev/null
+}
 
 dot_require_fzf() {
   if ! command -v fzf >/dev/null 2>&1; then
