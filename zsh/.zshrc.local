@@ -655,6 +655,120 @@ dot_notify_agent() {
   osascript -e "display notification \"${agent} finished in ${name}\" with title \"Agent Complete\" sound name \"Glass\"" 2>/dev/null
 }
 
+dot_quick_ask() {
+  local agent="$1"
+
+  case "$agent" in
+    claude) command -v claude >/dev/null 2>&1 || { echo "claude not found"; return 1; } ;;
+    codex)  command -v codex  >/dev/null 2>&1 || { echo "codex not found";  return 1; } ;;
+    gemini) command -v gemini >/dev/null 2>&1 || { echo "gemini not found"; return 1; } ;;
+    *) echo "Unknown agent: $agent"; return 1 ;;
+  esac
+
+  local project="${PWD##*/}"
+  local qa_dir
+  qa_dir=$(mktemp -d /tmp/quick-ask.XXXXXX)
+
+  # Helper: submit question (agent runs in background, PID tracked for cleanup)
+  cat > "$qa_dir/submit.sh" << 'EOF'
+#!/bin/zsh
+d="$1"; agent="$2"; shift 2
+question="$*"
+[ -z "$question" ] && exit 0
+n=$(( $(ls "$d"/*.q 2>/dev/null | wc -l) + 1 ))
+printf '%s' "$question" > "$d/$n.q"
+(
+  case "$agent" in
+    claude) claude -p --no-session-persistence "$question" > "$d/$n.a.tmp" 2>/dev/null ;;
+    codex)  codex exec "$question" > "$d/$n.a.tmp" 2>/dev/null ;;
+    gemini) gemini -p "$question" > "$d/$n.a.tmp" 2>/dev/null ;;
+  esac
+  mv "$d/$n.a.tmp" "$d/$n.a" 2>/dev/null
+  rm -f "$d/$n.pid"
+) &
+echo $! > "$d/$n.pid"
+EOF
+  chmod +x "$qa_dir/submit.sh"
+
+  # Helper: list Q&A history rows
+  cat > "$qa_dir/list.sh" << 'EOF'
+#!/bin/zsh
+d="$1"
+for f in $(ls -rt "$d"/*.q 2>/dev/null); do
+  id=$(basename "$f" .q)
+  q=$(cat "$f")
+  if [ -f "$d/$id.a" ]; then
+    printf '%s\t  ✓ %s\n' "$id" "$q"
+  else
+    printf '%s\t  ⏳ %s\n' "$id" "$q"
+  fi
+done
+EOF
+  chmod +x "$qa_dir/list.sh"
+
+  # Helper: preview response for selected item
+  cat > "$qa_dir/preview.sh" << 'EOF'
+#!/bin/zsh
+d="$1"; id="$2"
+if [ -z "$id" ]; then
+  printf '\033[90mType a question above and press Enter\033[0m'
+elif [ -f "$d/$id.a" ]; then
+  cat "$d/$id.a"
+else
+  printf '\033[90m⏳ thinking...\033[0m'
+fi
+EOF
+  chmod +x "$qa_dir/preview.sh"
+
+  # Helper: poll for updates (avoids nested parens in fzf binding)
+  cat > "$qa_dir/poll.sh" << EOF
+#!/bin/zsh
+while sleep 2; do
+  curl -sXPOST "http://127.0.0.1:\$1" -d "reload-sync($qa_dir/list.sh $qa_dir)+refresh-preview" 2>/dev/null || break
+done
+EOF
+  chmod +x "$qa_dir/poll.sh"
+
+  # Cleanup: kill all background agent processes on exit
+  dot_quick_ask_cleanup() {
+    for pidfile in "$qa_dir"/*.pid; do
+      [ -f "$pidfile" ] || continue
+      local pid
+      pid=$(cat "$pidfile")
+      kill "$pid" 2>/dev/null
+    done
+    rm -rf "$qa_dir"
+  }
+  trap dot_quick_ask_cleanup EXIT INT TERM
+
+  local list_cmd="$qa_dir/list.sh $qa_dir"
+  local submit_cmd="$qa_dir/submit.sh $qa_dir $agent"
+  local preview_cmd="$qa_dir/preview.sh $qa_dir {1}"
+
+  local title
+  title=$(printf '\033[1;35m%s\033[0m quick-ask in \033[1m%s\033[0m' "$agent" "$project")
+
+  local copy_cmd="[ -f '$qa_dir'/{1}.a ] && pbcopy < '$qa_dir'/{1}.a"
+
+  true | fzf --ansi \
+    --height=100% \
+    --disabled \
+    --prompt='> ' \
+    --border-label=" $title " \
+    --border-label-pos=top \
+    --preview="$preview_cmd" \
+    --preview-window='down:70%:wrap' \
+    --preview-label=' Response ' \
+    --delimiter=$'\t' --with-nth=2 \
+    --no-info --no-sort \
+    --header='  ctrl-y=copy response  esc=quit' \
+    --bind "enter:execute-silent($submit_cmd {q})+clear-query+reload-sync($list_cmd)" \
+    --bind "ctrl-y:execute-silent($copy_cmd)+bell" \
+    --listen 127.0.0.1:0 \
+    --bind "start:execute-silent($qa_dir/poll.sh \$FZF_PORT &)" \
+    --bind 'esc:abort'
+}
+
 dot_require_fzf() {
   if ! command -v fzf >/dev/null 2>&1; then
     echo "fzf not found in PATH"

@@ -111,7 +111,7 @@ Helper functions that produce picker rows are prefixed `dot_` (e.g., `dot_git_lo
 
 **Tmux** (`t*`): `tl` (list sessions), `tx` (create/attach), `ts` (fzf session switch), `tk` (kill), `tsw` (window switch), `tw` (expand workspace: editor/agent/test/logs windows), `tsp` (pane switch)
 
-**AI Agents**: `aa` (Claude), `ao` (Codex), `ag` (Gemini), with resume variants `aar`/`aor`/`agr`. All go through `dot_agent_cmd` wrapper. Tmux popup bindings: `prefix+A/O/G` to launch, `prefix+R` then `A/O/G` to resume.
+**AI Agents**: `aa` (Claude), `ao` (Codex), `ag` (Gemini), with resume variants `aar`/`aor`/`agr`. All go through `dot_agent_cmd` wrapper. Tmux bindings: `prefix+A/O/G` (uppercase) launch full interactive sessions in dedicated windows, `prefix+a/o/g` (lowercase) open quick-ask REPL popups using non-persistent modes (`claude -p`, `codex exec`, `gemini -p`). `prefix+R` then `A/O/G` to resume. Quick-ask via `dot_quick_ask <agent>` function.
 
 ## NVM Lazy Loading
 
