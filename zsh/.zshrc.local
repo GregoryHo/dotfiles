@@ -678,13 +678,13 @@ question="$*"
 n=$(( $(ls "$d"/*.q 2>/dev/null | wc -l) + 1 ))
 printf '%s' "$question" > "$d/$n.q"
 (
+  _qa_finish() { mv "$d/$n.a.tmp" "$d/$n.a" 2>/dev/null; rm -f "$d/$n.pid"; }
+  trap _qa_finish EXIT INT TERM HUP
   case "$agent" in
-    claude) claude -p --no-session-persistence "$question" > "$d/$n.a.tmp" 2>/dev/null ;;
-    codex)  codex exec "$question" > "$d/$n.a.tmp" 2>/dev/null ;;
-    gemini) gemini -p "$question" > "$d/$n.a.tmp" 2>/dev/null ;;
+    claude) claude -p --no-session-persistence "$question" > "$d/$n.a.tmp" 2>"$d/$n.err" ;;
+    codex)  codex exec "$question" > "$d/$n.a.tmp" 2>"$d/$n.err" ;;
+    gemini) gemini -p "$question" > "$d/$n.a.tmp" 2>"$d/$n.err" ;;
   esac
-  mv "$d/$n.a.tmp" "$d/$n.a" 2>/dev/null
-  rm -f "$d/$n.pid"
 ) &
 echo $! > "$d/$n.pid"
 EOF
@@ -714,17 +714,39 @@ if [ -z "$id" ]; then
   printf '\033[90mType a question above and press Enter\033[0m'
 elif [ -f "$d/$id.a" ]; then
   cat "$d/$id.a"
+elif [ -f "$d/$id.pid" ]; then
+  printf '\033[90m⏳ thinking...\033[0m'
+elif [ -f "$d/$id.err" ]; then
+  printf '\033[31m✗ Error:\033[0m\n'
+  cat "$d/$id.err"
 else
   printf '\033[90m⏳ thinking...\033[0m'
 fi
 EOF
   chmod +x "$qa_dir/preview.sh"
 
-  # Helper: poll for updates (avoids nested parens in fzf binding)
+  # Skip refresh-preview for completed items to avoid resetting the user's scroll position
+  local reload_action="reload-sync($qa_dir/list.sh $qa_dir)"
   cat > "$qa_dir/poll.sh" << EOF
 #!/bin/zsh
+was_pending=0
 while sleep 2; do
-  curl -sXPOST "http://127.0.0.1:\$1" -d "reload-sync($qa_dir/list.sh $qa_dir)+refresh-preview" 2>/dev/null || break
+  [ -d "$qa_dir" ] || break
+  # Promote responses from dead agent processes (SIGKILL fallback — normal exits use the trap)
+  for p in "$qa_dir"/*.pid(N); do
+    kill -0 "\$(cat "\$p")" 2>/dev/null && continue
+    local id=\${p:t:r}
+    [ -f "$qa_dir/\$id.a.tmp" ] && mv "$qa_dir/\$id.a.tmp" "$qa_dir/\$id.a" 2>/dev/null
+    rm -f "\$p"
+  done
+  pid_files=("$qa_dir"/*.pid(N))
+  pending=\${#pid_files}
+  if [ "\$pending" -gt 0 ]; then
+    curl -sXPOST "http://127.0.0.1:\$1" -d "transform([ -f $qa_dir/{1}.pid ] && echo '$reload_action+refresh-preview' || echo '$reload_action')" 2>/dev/null || break
+  elif [ "\$was_pending" -gt 0 ]; then
+    curl -sXPOST "http://127.0.0.1:\$1" -d "$reload_action+refresh-preview" 2>/dev/null || break
+  fi
+  was_pending=\$pending
 done
 EOF
   chmod +x "$qa_dir/poll.sh"
