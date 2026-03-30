@@ -1,15 +1,15 @@
 # shellcheck shell=bash
 # Show running AI agent count in tmux status bar.
 # Hidden (empty output) when no agents are running.
-# Detects agents by window name (agent-*) or pane foreground command.
+# Detects agents by pane foreground command (window name persists after exit, so not reliable).
 
 run_segment() {
 	local agents
-	agents=$(tmux list-panes -a -F '#{window_name} #{pane_current_command}' 2>/dev/null |
+	agents=$(tmux list-panes -a -F '#{pane_current_command}' 2>/dev/null |
 		awk '
-		/^agent-claude / || / claude$/ { c++ }
-		/^agent-codex /  || / codex$/  { o++ }
-		/^agent-gemini / || / gemini$/ { g++ }
+		/^claude$/ { c++ }
+		/^codex$/  { o++ }
+		/^gemini$/ { g++ }
 		END {
 			parts=""
 			if (c>0) parts = parts (parts=="" ? "" : " ") "C" (c>1 ? ":" c : "")

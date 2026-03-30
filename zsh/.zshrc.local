@@ -759,7 +759,7 @@ while sleep 2; do
   # Promote responses from dead agent processes (SIGKILL fallback — normal exits use the trap)
   for p in "$qa_dir"/*.pid(N); do
     kill -0 "\$(cat "\$p")" 2>/dev/null && continue
-    local id=\${p:t:r}
+    id=\${p:t:r}
     [ -f "$qa_dir/\$id.a.tmp" ] && mv "$qa_dir/\$id.a.tmp" "$qa_dir/\$id.a" 2>/dev/null
     rm -f "\$p"
   done
