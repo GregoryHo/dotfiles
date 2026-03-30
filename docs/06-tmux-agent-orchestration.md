@@ -167,16 +167,20 @@ Sends a macOS notification with the "Glass" system sound when any agent exits.
 
 ### Shell Aliases
 
-The shell-level commands are simpler wrappers:
+Continue aliases resume the most recent agent session:
 
 ```bash
-aa()  { claude "$@"; }           # New Claude session
-ao()  { codex "$@"; }           # New Codex session
-ag()  { gemini "$@"; }          # New Gemini session
-aar() { claude -c "$@"; }       # Resume Claude
-aor() { codex resume "$@"; }    # Resume Codex
-agr() { gemini --resume "$@"; } # Resume Gemini
+aac() { claude -c "$@"; }                                    # Resume Claude
+aoc() {                                                      # Resume Codex
+  [[ "$#" -eq 0 ]] && codex resume --last || codex resume "$@"
+}
+agc() {                                                      # Resume Gemini
+  [[ "$#" -eq 0 ]] && gemini --resume latest || gemini --resume "$@"
+}
 ```
+
+For new sessions, agents are launched directly by name (`claude`, `codex`,
+`gemini`) — no wrapper aliases needed.
 
 ## Key Files
 
