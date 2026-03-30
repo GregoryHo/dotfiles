@@ -666,8 +666,14 @@ dot_quick_ask() {
   esac
 
   local project="${PWD##*/}"
-  local qa_dir
-  qa_dir=$(mktemp -d /tmp/quick-ask.XXXXXX)
+  local qa_dir="/tmp/quick-ask-${project}-${agent}"
+  mkdir -p "$qa_dir"
+
+  # Prune Q&A pairs older than 8 hours
+  find "$qa_dir" -name "*.q" -mmin +480 2>/dev/null | while read -r f; do
+    local id=$(basename "$f" .q)
+    rm -f "$qa_dir/$id".{q,a,a.tmp,err,pid}
+  done
 
   # Helper: submit question (agent runs in background, PID tracked for cleanup)
   cat > "$qa_dir/submit.sh" << 'EOF'
@@ -675,8 +681,17 @@ dot_quick_ask() {
 d="$1"; agent="$2"; shift 2
 question="$*"
 [ -z "$question" ] && exit 0
-n=$(( $(ls "$d"/*.q 2>/dev/null | wc -l) + 1 ))
+max_id=$(ls "$d"/*.q 2>/dev/null | sed 's/.*\///;s/\.q$//' | sort -n | tail -1)
+n=$(( ${max_id:-0} + 1 ))
 printf '%s' "$question" > "$d/$n.q"
+# Keep last 20 Q&A pairs
+excess=$(( $(ls -1 "$d"/*.q 2>/dev/null | wc -l) - 20 ))
+if [ "$excess" -gt 0 ]; then
+  ls -t "$d"/*.q | tail -$excess | while read -r f; do
+    id=$(basename "$f" .q)
+    rm -f "$d/$id".{q,a,a.tmp,err,pid}
+  done
+fi
 (
   _qa_finish() { mv "$d/$n.a.tmp" "$d/$n.a" 2>/dev/null; rm -f "$d/$n.pid"; }
   trap _qa_finish EXIT INT TERM HUP
@@ -689,6 +704,15 @@ printf '%s' "$question" > "$d/$n.q"
 echo $! > "$d/$n.pid"
 EOF
   chmod +x "$qa_dir/submit.sh"
+
+  # Helper: clear all Q&A history and kill running agents
+  cat > "$qa_dir/clear.sh" << 'EOF'
+#!/bin/zsh
+d="$1"
+for p in "$d"/*.pid(N); do kill "$(cat "$p")" 2>/dev/null; done
+rm -f "$d"/*.q "$d"/*.a "$d"/*.a.tmp "$d"/*.err "$d"/*.pid 2>/dev/null
+EOF
+  chmod +x "$qa_dir/clear.sh"
 
   # Helper: list Q&A history rows
   cat > "$qa_dir/list.sh" << 'EOF'
@@ -751,15 +775,12 @@ done
 EOF
   chmod +x "$qa_dir/poll.sh"
 
-  # Cleanup: kill all background agent processes on exit
+  # Cleanup: kill running agents but preserve history dir
   dot_quick_ask_cleanup() {
     for pidfile in "$qa_dir"/*.pid; do
       [ -f "$pidfile" ] || continue
-      local pid
-      pid=$(cat "$pidfile")
-      kill "$pid" 2>/dev/null
+      kill "$(cat "$pidfile")" 2>/dev/null
     done
-    rm -rf "$qa_dir"
   }
   trap dot_quick_ask_cleanup EXIT INT TERM
 
@@ -771,6 +792,7 @@ EOF
   title=$(printf '\033[1;35m%s\033[0m quick-ask in \033[1m%s\033[0m' "$agent" "$project")
 
   local copy_cmd="[ -f '$qa_dir'/{1}.a ] && pbcopy < '$qa_dir'/{1}.a"
+  local clear_cmd="$qa_dir/clear.sh $qa_dir"
 
   true | fzf --ansi \
     --height=100% \
@@ -783,11 +805,12 @@ EOF
     --preview-label=' Response ' \
     --delimiter=$'\t' --with-nth=2 \
     --no-info --no-sort \
-    --header='  ctrl-y=copy response  esc=quit' \
+    --header='  ctrl-y=copy  ctrl-x=clear  esc=quit' \
     --bind "enter:execute-silent($submit_cmd {q})+clear-query+reload-sync($list_cmd)" \
     --bind "ctrl-y:execute-silent($copy_cmd)+bell" \
+    --bind "ctrl-x:execute-silent($clear_cmd)+reload-sync($list_cmd)+refresh-preview" \
     --listen 127.0.0.1:0 \
-    --bind "start:execute-silent($qa_dir/poll.sh \$FZF_PORT &)" \
+    --bind "start:reload-sync($list_cmd)+execute-silent($qa_dir/poll.sh \$FZF_PORT &)" \
     --bind 'esc:abort'
 }
 
