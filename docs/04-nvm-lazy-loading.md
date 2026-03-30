@@ -13,27 +13,25 @@ someone actually types `nvm`.
 
 ## How It Works
 
-### Three-Phase Strategy
+### Two-Phase Strategy
 
 ```
-Phase 1: Shell Startup              Phase 2: First `nvm` Call         Phase 3: Directory Change
-(instant, no nvm.sh)                (one-time cost)                   (automatic)
-
-┌─────────────────────────┐         ┌────────────────────────┐        ┌────────────────────────┐
-│ Read alias/default       │         │ nvm() {                │        │ load-nvmrc() {         │
-│   → "22" or "22.12.0"   │         │   unset -f nvm         │        │   if [[ -f .nvmrc ]]   │
-│                          │         │   . nvm.sh --no-use    │        │     nvm use            │
-│ Resolve to full path:    │         │   nvm "$@"             │        │   fi                   │
-│   ~/.nvm/versions/node/  │         │ }                      │        │ }                      │
-│   v22.12.0/bin           │         │                        │        │ add-zsh-hook chpwd     │
-│                          │         │ ◀── stub replaces      │        │   load-nvmrc           │
-│ Prepend to PATH          │         │     itself with real    │        │                        │
-│ Set NVM_BIN, MANPATH     │         │     nvm on first call   │        │ ◀── auto-switches      │
-│ hash -r                  │         │                        │        │     node version per    │
-│                          │         │                        │        │     project .nvmrc      │
-│ ◀── node/npm/npx ready   │         │                        │        │                        │
-│     nvm.sh NOT sourced   │         │                        │        │                        │
-└─────────────────────────┘         └────────────────────────┘        └────────────────────────┘
+Phase 1: Shell Startup (instant)          Phase 2: First `nvm` Call (one-time)
+┌─────────────────────────────┐           ┌──────────────────────────────┐
+│ Read ~/.nvm/alias/default    │           │ nvm() {                      │
+│   → "22" or "22.12.0"       │           │   unset -f nvm               │
+│                              │           │   . "$NVM_DIR/nvm.sh"        │
+│ Resolve to full path:        │           │       --no-use               │
+│   ~/.nvm/versions/node/      │           │   nvm "$@"                   │
+│   v22.12.0/bin               │           │ }                            │
+│                              │           │                              │
+│ Prepend to PATH              │           │ ◀── stub replaces itself     │
+│ Set NVM_BIN, MANPATH         │           │     with real nvm on first   │
+│ hash -r                      │           │     call                     │
+│                              │           │                              │
+│ ◀── node/npm/npx ready       │           │ After this: full nvm loaded, │
+│     nvm.sh NOT sourced       │           │ nvm use/install/ls all work  │
+└─────────────────────────────┘           └──────────────────────────────┘
 ```
 
 ### Phase 1: Eager PATH Resolution (zsh/.zshrc)
@@ -85,32 +83,6 @@ nvm() {
 The `--no-use` flag is important: it prevents nvm from running `nvm use default`
 on load, since Phase 1 already set up the correct PATH.
 
-### Phase 3: Automatic Version Switching
-
-A `chpwd` hook detects `.nvmrc` files when changing directories:
-
-```bash
-autoload -U add-zsh-hook
-load-nvmrc() {
-  local nvmrc_path="$(nvm_find_nvmrc)"
-  if [ -n "$nvmrc_path" ]; then
-    local nvmrc_node_version=$(nvm version "$(cat "${nvmrc_path}")")
-    if [ "$nvmrc_node_version" = "N/A" ]; then
-      nvm install
-    elif [ "$nvmrc_node_version" != "$(nvm version)" ]; then
-      nvm use
-    fi
-  elif [ -n "$(PWD=$OLDPWD nvm_find_nvmrc)" ] && \
-       [ "$(nvm version)" != "$(nvm version default)" ]; then
-    nvm use default
-  fi
-}
-add-zsh-hook chpwd load-nvmrc
-```
-
-**Note**: First `cd` into a project with `.nvmrc` triggers Phase 2 (nvm.sh
-load), then switches versions. Subsequent switches are instant.
-
 ### Persistent Global Packages
 
 `nvm-default-packages` is manually symlinked to `~/.nvm/default-packages`
@@ -149,7 +121,6 @@ With lazy loading:     PATH resolved from alias  → ~5ms added
 | File | Role |
 |------|------|
 | `zsh/.zshrc` (lines 236-260) | Eager PATH resolution + stub function |
-| `zsh/.zshrc` (lines 270-300) | `load-nvmrc` chpwd hook |
 | `nvm-default-packages` | Persistent global npm packages |
 | `shell/.env.shared.sh` (lines 55-62) | NVM fallback for non-interactive shells |
 

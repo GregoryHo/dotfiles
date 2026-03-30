@@ -106,7 +106,7 @@ config file. Stowing it would create `~/.env.shared.sh`, which is misleading.
 # Deploy all stow packages (from repo root, targeting $HOME)
 stow -t $HOME bash config fzf git tmux vim zsh
 
-# Re-deploy a single package (adopt existing files into repo)
+# Re-deploy a single package (unstow + stow, fixes stale symlinks)
 stow -t $HOME -R zsh
 
 # Dry run (preview what would be symlinked)
