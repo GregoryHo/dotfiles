@@ -19,6 +19,16 @@ alias rm='echo "Foce add option -i. (**Warning** addtional -f will override this
 #  fi
 #}
 
+# zoxide (frecency-based cd replacement)
+if command -v zoxide >/dev/null 2>&1; then
+  eval "$(zoxide init zsh)"
+fi
+
+# direnv (per-project .envrc auto-load)
+if command -v direnv >/dev/null 2>&1; then
+  eval "$(direnv hook zsh)"
+fi
+
 # Homebrew
 # Shared fzf UI defaults for shell pickers
 dot_fzf_ui() {
@@ -636,7 +646,174 @@ lg() {
   lazygit "$@"
 }
 
-unalias tl tx ts tsw tk tw aac aoc agc lg 2>/dev/null
+unalias tl tx ts tsw tk tw tsa tla aac aoc agc lg 2>/dev/null
+
+dot_notify_agent() {
+  local agent="${1:-agent}" project="${2:-}"
+  local name="${project##*/}"
+  [[ -z "$name" ]] && name="$agent"
+  osascript -e "display notification \"${agent} finished in ${name}\" with title \"Agent Complete\" sound name \"Glass\"" 2>/dev/null
+}
+
+dot_quick_ask() {
+  local agent="$1"
+
+  case "$agent" in
+    claude) command -v claude >/dev/null 2>&1 || { echo "claude not found"; return 1; } ;;
+    codex)  command -v codex  >/dev/null 2>&1 || { echo "codex not found";  return 1; } ;;
+    gemini) command -v gemini >/dev/null 2>&1 || { echo "gemini not found"; return 1; } ;;
+    *) echo "Unknown agent: $agent"; return 1 ;;
+  esac
+
+  local project="${PWD##*/}"
+  local project_hash=$(echo -n "$PWD" | md5 | head -c 8)
+  local qa_dir="/tmp/quick-ask-${project}-${project_hash}-${agent}"
+  mkdir -p "$qa_dir"
+
+  # Prune Q&A pairs older than 8 hours
+  find "$qa_dir" -name "*.q" -mmin +480 2>/dev/null | while read -r f; do
+    local id=$(basename "$f" .q)
+    rm -f "$qa_dir/$id".{q,a,a.tmp,err,pid}
+  done
+
+  # Helper: submit question (agent runs in background, PID tracked for cleanup)
+  cat > "$qa_dir/submit.sh" << 'EOF'
+#!/bin/zsh
+d="$1"; agent="$2"; shift 2
+question="$*"
+[ -z "$question" ] && exit 0
+max_id=$(ls "$d"/*.q 2>/dev/null | sed 's/.*\///;s/\.q$//' | sort -n | tail -1)
+n=$(( ${max_id:-0} + 1 ))
+printf '%s' "$question" > "$d/$n.q"
+# Keep last 20 Q&A pairs
+excess=$(( $(ls -1 "$d"/*.q 2>/dev/null | wc -l) - 20 ))
+if [ "$excess" -gt 0 ]; then
+  ls -t "$d"/*.q | tail -$excess | while read -r f; do
+    id=$(basename "$f" .q)
+    rm -f "$d/$id".{q,a,a.tmp,err,pid}
+  done
+fi
+(
+  _qa_finish() { mv "$d/$n.a.tmp" "$d/$n.a" 2>/dev/null; rm -f "$d/$n.pid"; }
+  trap _qa_finish EXIT INT TERM HUP
+  case "$agent" in
+    claude) claude -p --no-session-persistence "$question" > "$d/$n.a.tmp" 2>"$d/$n.err" ;;
+    codex)  codex exec "$question" > "$d/$n.a.tmp" 2>"$d/$n.err" ;;
+    gemini) gemini -p "$question" > "$d/$n.a.tmp" 2>"$d/$n.err" ;;
+  esac
+) &
+echo $! > "$d/$n.pid"
+EOF
+  chmod +x "$qa_dir/submit.sh"
+
+  # Helper: clear all Q&A history and kill running agents
+  cat > "$qa_dir/clear.sh" << 'EOF'
+#!/bin/zsh
+d="$1"
+for p in "$d"/*.pid(N); do kill "$(cat "$p")" 2>/dev/null; done
+rm -f "$d"/*.q "$d"/*.a "$d"/*.a.tmp "$d"/*.err "$d"/*.pid 2>/dev/null
+EOF
+  chmod +x "$qa_dir/clear.sh"
+
+  # Helper: list Q&A history rows
+  cat > "$qa_dir/list.sh" << 'EOF'
+#!/bin/zsh
+d="$1"
+for f in $(ls -rt "$d"/*.q 2>/dev/null); do
+  id=$(basename "$f" .q)
+  q=$(cat "$f")
+  if [ -f "$d/$id.a" ]; then
+    printf '%s\t  ✓ %s\n' "$id" "$q"
+  else
+    printf '%s\t  ⏳ %s\n' "$id" "$q"
+  fi
+done
+EOF
+  chmod +x "$qa_dir/list.sh"
+
+  # Helper: preview response for selected item
+  cat > "$qa_dir/preview.sh" << 'EOF'
+#!/bin/zsh
+d="$1"; id="$2"
+if [ -z "$id" ]; then
+  printf '\033[90mType a question above and press Enter\033[0m'
+elif [ -f "$d/$id.a" ]; then
+  cat "$d/$id.a"
+elif [ -f "$d/$id.pid" ]; then
+  printf '\033[90m⏳ thinking...\033[0m'
+elif [ -f "$d/$id.err" ]; then
+  printf '\033[31m✗ Error:\033[0m\n'
+  cat "$d/$id.err"
+else
+  printf '\033[90m⏳ thinking...\033[0m'
+fi
+EOF
+  chmod +x "$qa_dir/preview.sh"
+
+  # Skip refresh-preview for completed items to avoid resetting the user's scroll position
+  local reload_action="reload-sync($qa_dir/list.sh $qa_dir)"
+  cat > "$qa_dir/poll.sh" << EOF
+#!/bin/zsh
+was_pending=0
+while sleep 2; do
+  [ -d "$qa_dir" ] || break
+  # Promote responses from dead agent processes (SIGKILL fallback — normal exits use the trap)
+  for p in "$qa_dir"/*.pid(N); do
+    kill -0 "\$(cat "\$p")" 2>/dev/null && continue
+    id=\${p:t:r}
+    [ -f "$qa_dir/\$id.a.tmp" ] && mv "$qa_dir/\$id.a.tmp" "$qa_dir/\$id.a" 2>/dev/null
+    rm -f "\$p"
+  done
+  pid_files=("$qa_dir"/*.pid(N))
+  pending=\${#pid_files}
+  if [ "\$pending" -gt 0 ]; then
+    curl -sXPOST "http://127.0.0.1:\$1" -d "transform([ -f $qa_dir/{1}.pid ] && echo '$reload_action+refresh-preview' || echo '$reload_action')" 2>/dev/null || break
+  elif [ "\$was_pending" -gt 0 ]; then
+    curl -sXPOST "http://127.0.0.1:\$1" -d "$reload_action+refresh-preview" 2>/dev/null || break
+  fi
+  was_pending=\$pending
+done
+EOF
+  chmod +x "$qa_dir/poll.sh"
+
+  # Cleanup: kill running agents but preserve history dir
+  dot_quick_ask_cleanup() {
+    for pidfile in "$qa_dir"/*.pid; do
+      [ -f "$pidfile" ] || continue
+      kill "$(cat "$pidfile")" 2>/dev/null
+    done
+  }
+  trap dot_quick_ask_cleanup EXIT INT TERM
+
+  local list_cmd="$qa_dir/list.sh $qa_dir"
+  local submit_cmd="$qa_dir/submit.sh $qa_dir $agent"
+  local preview_cmd="$qa_dir/preview.sh $qa_dir {1}"
+
+  local title
+  title=$(printf '\033[1;35m%s\033[0m quick-ask in \033[1m%s\033[0m' "$agent" "$project")
+
+  local copy_cmd="[ -f '$qa_dir'/{1}.a ] && pbcopy < '$qa_dir'/{1}.a"
+  local clear_cmd="$qa_dir/clear.sh $qa_dir"
+
+  true | fzf --ansi \
+    --height=100% \
+    --disabled \
+    --prompt='> ' \
+    --border-label=" $title " \
+    --border-label-pos=top \
+    --preview="$preview_cmd" \
+    --preview-window='down:70%:wrap' \
+    --preview-label=' Response ' \
+    --delimiter=$'\t' --with-nth=2 \
+    --no-info --no-sort \
+    --header='  ctrl-y=copy  ctrl-x=clear  esc=quit' \
+    --bind "enter:execute-silent($submit_cmd {q})+clear-query+reload-sync($list_cmd)" \
+    --bind "ctrl-y:execute-silent($copy_cmd)+bell" \
+    --bind "ctrl-x:execute-silent($clear_cmd)+reload-sync($list_cmd)+refresh-preview" \
+    --listen 127.0.0.1:0 \
+    --bind "start:reload-sync($list_cmd)+execute-silent($qa_dir/poll.sh \$FZF_PORT &)" \
+    --bind 'esc:abort'
+}
 
 dot_require_fzf() {
   if ! command -v fzf >/dev/null 2>&1; then
@@ -697,6 +874,89 @@ dot_tmux_window_pretty_rows() {
       if (length(name) > 16) name=substr(name, 1, 13) "..."
       printf "%s\t%-2s %-14s %3s %-16s %5s\n", $1, mark, $2, $3, name, $5
     }'
+}
+
+dot_agent_pane_rows() {
+  local now
+  now="$(date +%s)"
+
+  dot_tmux_cmd list-panes -a \
+    -F $'#{session_name}:#{window_index}.#{pane_index}\t#{window_name}\t#{pane_current_command}\t#{@project_path}\t#{pane_current_path}\t#{window_activity}' 2>/dev/null |
+    awk -F'\t' -v now="$now" -v home="$HOME" -v user_shell="$(basename "$SHELL")" '
+    {
+      target=$1; wname=$2; cmd=$3; projpath=$4; cwd=$5; activity=$6
+      agent=""
+      if (wname ~ /^agent-claude/)      agent="claude"
+      else if (wname ~ /^agent-codex/)  agent="codex"
+      else if (wname ~ /^agent-gemini/) agent="gemini"
+      if (agent == "") {
+        if (cmd ~ /^claude/)  agent="claude"
+        else if (cmd ~ /^codex/)   agent="codex"
+        else if (cmd ~ /^gemini/)  agent="gemini"
+      }
+      if (agent == "") next
+
+      alive = (cmd != user_shell) ? 1 : 0
+
+      split(target, t, ":")
+      session = t[1]
+
+      p = (projpath != "" ? projpath : cwd)
+      n = split(p, parts, "/")
+      project = (n > 0 ? parts[n] : p)
+      if (length(project) > 30) project = substr(project, 1, 27) "..."
+
+      idle = (activity != "" && activity > 0) ? now - activity : 0
+      if (!alive)            status = "exited"
+      else if (idle < 10)    status = "active"
+      else if (idle < 300)   status = "busy"
+      else                   status = "idle"
+
+      if (idle < 60)        idlefmt = idle "s"
+      else if (idle < 3600) idlefmt = int(idle/60) "m"
+      else if (idle < 86400) idlefmt = int(idle/3600) "h"
+      else                  idlefmt = int(idle/86400) "d"
+
+      cwd_short = cwd
+      if (home != "" && substr(cwd_short, 1, length(home)) == home)
+        cwd_short = "~" substr(cwd_short, length(home) + 1)
+      if (length(cwd_short) > 40) cwd_short = "..." substr(cwd_short, length(cwd_short) - 36)
+
+      printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", target, agent, session, project, status, idlefmt, cwd_short
+    }'
+}
+
+dot_agent_pane_pretty_rows() {
+  local c_claude=$'\033[35m' c_codex=$'\033[32m' c_gemini=$'\033[34m'
+  local c_active=$'\033[32m' c_busy=$'\033[33m' c_idle=$'\033[90m' c_exited=$'\033[31m'
+  local c_reset=$'\033[0m'
+
+  dot_agent_pane_rows |
+    while IFS=$'\t' read -r target agent session project astate idle cwd; do
+      local c_agent="" icon="" c_st=""
+      case "$agent" in
+        claude) c_agent="$c_claude" ;;
+        codex)  c_agent="$c_codex" ;;
+        gemini) c_agent="$c_gemini" ;;
+      esac
+      case "$astate" in
+        active) c_st="$c_active" icon="●" ;;
+        busy)   c_st="$c_busy"   icon="◉" ;;
+        idle)   c_st="$c_idle"   icon="○" ;;
+        exited) c_st="$c_exited" icon="✕" ;;
+      esac
+      if [[ "$astate" == "exited" ]]; then
+        printf '%s\t%s%s%s %s%-8s %-16s %-30s %-8s %5s  %s%s\n' \
+          "$target" "$c_exited" "$icon" "$c_reset" \
+          "$c_idle" "$agent" "$session" "$project" \
+          "$astate" "$idle" "$cwd" "$c_reset"
+      else
+        printf '%s\t%s%s%s %s%-8s%s %-16s %-30s %s%-8s%s %5s  %s\n' \
+          "$target" "$c_st" "$icon" "$c_reset" \
+          "$c_agent" "$agent" "$c_reset" "$session" "$project" \
+          "$c_st" "$astate" "$c_reset" "$idle" "$cwd"
+      fi
+    done
 }
 
 # tmux session control plane (works inside and outside tmux)
@@ -980,11 +1240,25 @@ tw() {
   dot_tmux_cmd select-window -t "$name:editor" 2>/dev/null
 }
 
-# tmux/fzf workspace helper
+dot_tmux_goto_pane() {
+  local target="$1"
+  local session="${target%%:*}"
+  local pane="${target##*.}"
+  local window="${target#*:}"
+  window="${window%.*}"
+
+  if [[ -n "$TMUX" ]]; then
+    dot_tmux_cmd switch-client -t "$session"
+    dot_tmux_cmd select-window -t "${session}:${window}"
+    dot_tmux_cmd select-pane -t "${session}:${window}.${pane}"
+  else
+    dot_tmux_cmd attach-session -t "$session" \; select-window -t "${session}:${window}" \; select-pane -t "${session}:${window}.${pane}"
+  fi
+}
+
 tsp() {
-  [[ -n "$TMUX" ]] || { echo "Not inside tmux"; return 1; }
   dot_require_fzf || return 1
-  local target session window pane
+  local target
   target="$(
     dot_tmux_pane_pretty_rows |
       dot_fzf_ui --delimiter=$'\t' --with-nth=2 --prompt='pane> ' \
@@ -992,13 +1266,61 @@ tsp() {
       cut -f1
   )"
   [[ -z "$target" ]] && return
+  dot_tmux_goto_pane "$target"
+}
 
-  session="${target%%:*}"         # e.g. "test"
-  pane="${target##*.}"            # e.g. "1"
-  window="${target#*:}"           # e.g. "4.1"
-  window="${window%.*}"           # e.g. "4"
+tsa() {
+  dot_require_fzf || return 1
 
-  dot_tmux_cmd switch-client -t "$session"
-  dot_tmux_cmd select-window -t "${session}:${window}"
-  dot_tmux_cmd select-pane -t "${session}:${window}.${pane}"
+  local rows target
+  local reload_cmd='source ~/.zshrc.local 2>/dev/null; dot_agent_pane_pretty_rows'
+  rows="$(dot_agent_pane_pretty_rows)"
+  if [[ -z "$rows" ]]; then
+    echo "No active agents. Launch with prefix+A/O/G."
+    read -sk1 '?Press any key to close...'
+    return 0
+  fi
+
+  local col_hdr
+  col_hdr="$(printf '  %-8s %-16s %-30s %-8s %5s  %s' type session project status idle cwd)"
+
+  local fzf_enter
+  fzf_enter='enter:transform:if [[ {fzf:prompt} =~ send ]]; then if [[ -n {q} ]]; then echo "execute-silent(tmux send-keys -t {1} -l {q}; tmux send-keys -t {1} Enter)+clear-query+enable-search+change-prompt(agent> )+reload-sync(___RELOAD___)"; else echo "clear-query+enable-search+change-prompt(agent> )"; fi; else echo accept; fi'
+  fzf_enter="${fzf_enter//___RELOAD___/$reload_cmd}"
+
+  target="$(
+    printf '%s\n' "$rows" |
+      dot_fzf_ui --height=100% --ansi --prompt='agent> ' --delimiter=$'\t' --with-nth=2 --accept-nth=1 \
+        --border-label=' ctrl-r=refresh  alt-s=send  ctrl-x=stop  alt-k=kill ' \
+        --header="$col_hdr" \
+        --preview='tmux capture-pane -t {1} -ep -S -200 2>/dev/null | sed "s/\x1b\[[?]*[0-9;]*[A-Za-ln-z]//g" || echo "No preview"' \
+        --preview-window=down:70%:wrap:follow \
+        --preview-label=' Agent Preview ' \
+        --listen 127.0.0.1:0 \
+        --bind "start:execute-silent(while sleep 2; do curl -sXPOST http://127.0.0.1:\$FZF_PORT -d refresh-preview 2>/dev/null || break; done &)" \
+        --bind 'ctrl-/:change-preview-window(down:80%:wrap:follow|down:70%:wrap:follow|hidden)' \
+        --bind "ctrl-r:reload-sync($reload_cmd)" \
+        --bind "ctrl-x:execute-silent(tmux send-keys -t {1} C-c)+reload-sync($reload_cmd)" \
+        --bind "alt-k:execute-silent(tmux kill-pane -t {1})+reload-sync($reload_cmd)" \
+        --bind 'alt-s:disable-search+clear-query+change-prompt(send> )' \
+        --bind "$fzf_enter" \
+        --bind 'esc:transform:[[ {fzf:prompt} =~ send ]] && echo "clear-query+enable-search+change-prompt(agent> )" || echo abort'
+  )"
+  [[ -z "$target" ]] && return
+  dot_tmux_goto_pane "$target"
+}
+
+tla() {
+  local rows
+  rows="$(dot_agent_pane_rows)"
+  if [[ -z "$rows" ]]; then
+    echo "No active agents. Launch with prefix+A/O/G."
+    return 0
+  fi
+
+  printf '%-8s %-16s %-30s %-8s %5s  %s\n' "type" "session" "project" "status" "idle" "cwd"
+  printf '%s\n' "$rows" |
+    awk -F'\t' '{
+      printf "%-8s %-16s %-30s %-8s %5s  %s\n", $2, $3, $4, $5, $6, $7
+    }'
 }

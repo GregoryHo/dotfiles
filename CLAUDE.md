@@ -74,6 +74,10 @@ Most tools follow: base config + `.local` override.
 | Git   | `git/.gitconfig`      | `~/.gitconfig.local`     |
 | FZF   | `fzf/.fzf.zsh`, `fzf/.fzf.bash` | —             |
 
+### Git Pager & Diff
+
+Git uses [delta](https://github.com/dandavella/delta) as the pager (`git/.gitconfig` `[pager]` section) with Monokai Extended theme. Preserve the `[pager]` and `[delta]` sections when editing `.gitconfig`. Grep is configured with `--heading --line-number --extended-regexp`.
+
 ### Git Identity Overrides
 
 GitHub identity is tracked in `git/.gitconfig-github` (public info, safe to commit). Work identities (e.g. GitLab) are configured via `~/.gitconfig.local` using `includeIf` directives that point to untracked identity files like `~/.gitconfig-gitlab`. This keeps work directory paths and corporate identities out of the public repo.
@@ -109,9 +113,16 @@ Helper functions that produce picker rows are prefixed `dot_` (e.g., `dot_git_lo
 
 **Worktree** (`wt*`): `wta` (add), `wtab` (add from branch picker), `wtr` (remove), `wtg` (go), `wtb` (go to base), `wtm` (merge), `wtp` (prune empty directories), `wtc` (add + env init + launch agent). Worktrees go in sibling directory `<repo>-worktrees/`.
 
-**Tmux** (`t*`): `tl` (list sessions), `tx` (create/attach), `ts` (fzf session switch), `tk` (kill), `tsw` (window switch), `tw` (expand workspace: editor/agent/test/logs windows), `tsp` (pane switch)
+**Tmux** (`t*`): `tl` (list sessions), `tx` (create/attach), `ts` (fzf session switch), `tk` (kill), `tsw` (window switch), `tw` (expand workspace: editor/agent/test/logs windows), `tsp` (pane switch), `tsa` (agent dashboard: fzf picker with live preview, send commands, ctrl-x stop), `tla` (list all agents)
 
-**AI Agents**: `aa` (Claude), `ao` (Codex), `ag` (Gemini), with resume variants `aar`/`aor`/`agr`. All go through `dot_agent_cmd` wrapper. Tmux popup bindings: `prefix+A/O/G` to launch, `prefix+R` then `A/O/G` to resume.
+**AI Agents**: `aa` (Claude), `ao` (Codex), `ag` (Gemini), with resume variants `aar`/`aor`/`agr`. All go through `dot_agent_cmd` wrapper. Tmux bindings: `prefix+A/O/G` (uppercase) launch full interactive sessions in dedicated windows, `prefix+a/o/g` (lowercase) open async quick-ask REPL popups — an fzf-based Q&A loop where questions run in the background and answers stream into a live preview pane. `prefix+R` then `A/O/G` to resume. Quick-ask via `dot_quick_ask <agent>` function.
+
+## Zsh Interactive Config
+
+- Theme: Powerlevel10k with battery, time, dir, vcs (left) and execution time, jobs, ram, load (right)
+- Oh My Zsh plugins: `git`, `docker`, `kubectl`, `minikube`, `react-native`, `zsh-syntax-highlighting`, `tmux` (auto-start enabled)
+- FZF trigger sequence is `~~` (not default `**`); source is `fd --type f`
+- `vim`/`vi`/`mvim` are all aliased to `nvim`
 
 ## NVM Lazy Loading
 
@@ -127,6 +138,12 @@ Global packages that should persist across Node versions are listed in `nvm-defa
 - Plugins via tpm: tmux-resurrect, tmux-continuum, erikw/tmux-powerline
 - Mouse on, vi mode keys, prefix is C-a (GNU Screen compatible)
 - Plugin auto-update on launch/reload is disabled for faster startup
+- Key custom bindings: `prefix+T` (agent dashboard popup), `prefix+L` (lazygit), `prefix+m/M` (mouse toggle/status)
+- Layer 2 enhancements:
+  - `prefix+E`: open scrollback in Neovim (read-only editor, like Zellij's scrollback)
+  - `tmux-thumbs` plugin: hint-based selection for URLs, paths, SHAs (like Vimium for terminal)
+  - `dot_notify_agent`: macOS notification (Glass sound) when an agent process exits
+  - `agent_status` powerline segment: shows running agent count (C/O/G) in status bar, hidden when none active
 
 ## Vim
 
@@ -138,6 +155,16 @@ Global packages that should persist across Node versions are listed in `nvm-defa
 
 - Based on kickstart.nvim; entry point `nvim/init.lua`
 - Plugin manager: lazy.nvim (lock file `nvim/lazy-lock.json`)
-- Custom plugins in `nvim/lua/custom/plugins/`; kickstart modules in `nvim/lua/kickstart/plugins/`
+- Custom plugins in `nvim/lua/custom/plugins/`: `git.lua` (diffview, gitsigns), `filesystem.lua` (neo-tree)
+- Kickstart modules in `nvim/lua/kickstart/plugins/` (autopairs, indent, lint, debug, gitsigns, neo-tree)
 - LSP configured via mason.nvim (auto-install servers)
+- Leader key: `<space>` (Vim uses `,`)
 - Stowed to `~/.config/nvim`
+
+## Gotchas
+
+- **GVM is intentionally disabled** in `zsh/.zshrc` — it caused `cd` slowdown. Don't re-enable without testing.
+- **Lazygit has force-push disabled** (`disableForcePushing: true` in `config/lazygit/config.yml`) — this is intentional safety.
+- **OrbStack shell integration** is sourced in `zsh/.zprofile` — don't remove without checking container workflows.
+- **Tmux auto-start is on** (`ZSH_TMUX_AUTOSTART=true` in `zsh/.zshrc`) — every new zsh terminal joins tmux.
+- **`rm` is aliased to `rm -i`** in `zsh/.zshrc.local` — interactive confirmation by default.
