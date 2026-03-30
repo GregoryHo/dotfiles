@@ -8,16 +8,17 @@ independently deployable package.
 Dotfiles need to live in a git repo but tools expect them in `$HOME` or
 `~/.config/`. Copying files loses the git link. Manual symlinks don't scale.
 GNU Stow automates the mapping: each directory becomes a "package" whose
-contents are symlinked relative to a target (default: parent of stow dir, i.e.
-`$HOME`).
+contents are symlinked relative to a target directory. Since this repo lives in
+`~/GitHub/dotfiles/` (not directly under `$HOME`), all stow commands require
+`-t $HOME` to target the home directory.
 
 ## How It Works
 
-Stow treats each top-level directory as a package. Running `stow zsh` from the
-repo root creates symlinks in `$HOME` for every file inside `zsh/`:
+Stow treats each top-level directory as a package. Running `stow -t $HOME zsh`
+from the repo root creates symlinks in `$HOME` for every file inside `zsh/`:
 
 ```
-stow zsh
+stow -t $HOME zsh
   zsh/.zprofile  ──▶  ~/.zprofile
   zsh/.zshrc     ──▶  ~/.zshrc
 ```
@@ -42,7 +43,7 @@ dotfiles/                        $HOME
 │   ├── .gitconfig      ─────────┼──▶  ~/.gitconfig
 │   └── .gitconfig-github ───────┼──▶  ~/.gitconfig-github
 ├── nvim/                        │
-│   └── (entire tree)   ─────────┼──▶  ~/.config/nvim/
+│   └── (entire tree)   ── ln ───┼──▶  ~/.config/nvim/  (manual symlink)
 ├── tmux/                        │
 │   └── .tmux.conf.local ───────┼──▶  ~/.tmux.conf.local
 ├── vim/                         │
@@ -63,17 +64,29 @@ dotfiles/                        $HOME
 ### The `config/` Package Trick
 
 The `config/` directory maps to `~/.config/` because Stow preserves directory
-structure relative to the target. Since the repo lives in `~/GitHub/dotfiles/`,
-and the stow target is `$HOME` (one level up from repo... actually the default
-parent), the `config/` directory inside the package creates symlinks at the
-right XDG path:
+structure relative to the target. With `-t $HOME`, the `config/` directory
+inside the package creates symlinks at the right XDG path:
 
 ```
-dotfiles/config/lazygit/  ──stow──▶  ~/.config/lazygit/  (directory symlink)
+dotfiles/config/lazygit/  ──stow -t $HOME──▶  ~/.config/lazygit/  (directory symlink)
 ```
 
 This means lazygit and tmux-powerline configs are **directory symlinks**, not
 individual file symlinks. Editing any file inside edits the repo copy directly.
+
+### Manual Symlinks
+
+Not everything is stow-managed. Some packages need non-standard target paths:
+
+```
+nvim/                  ── ln -s ──▶  ~/.config/nvim       (entire directory)
+nvm-default-packages   ── ln -s ──▶  ~/.nvm/default-packages
+```
+
+Neovim's config must live at `~/.config/nvim/` but the package has `init.lua`
+at its root (no `.config/nvim` subpath), so a direct directory symlink is used
+instead of stow. Similarly, `nvm-default-packages` targets `~/.nvm/`, which is
+outside `$HOME`'s direct children.
 
 ### Why `shell/` Is Not Stowed
 
@@ -90,14 +103,18 @@ config file. Stowing it would create `~/.env.shared.sh`, which is misleading.
 ## Commands
 
 ```bash
-# Deploy all packages (from repo root)
-stow bash config fzf git nvim tmux vim zsh
+# Deploy all stow packages (from repo root, targeting $HOME)
+stow -t $HOME bash config fzf git tmux vim zsh
 
 # Re-deploy a single package (adopt existing files into repo)
-stow -R zsh
+stow -t $HOME -R zsh
 
 # Dry run (preview what would be symlinked)
-stow -n -v zsh
+stow -t $HOME -n -v zsh
+
+# Manual symlinks (not stow-managed)
+ln -s ~/GitHub/dotfiles/nvim ~/.config/nvim
+ln -s ~/GitHub/dotfiles/nvm-default-packages ~/.nvm/default-packages
 ```
 
 ## Key Files

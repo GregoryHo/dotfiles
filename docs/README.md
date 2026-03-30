@@ -12,7 +12,7 @@ dotfiles/
 ├── config/          ──stow──▶  ~/.config/{lazygit,tmux-powerline,karabiner,...}
 ├── fzf/             ──stow──▶  ~/.fzf.zsh, ~/.fzf.bash
 ├── git/             ──stow──▶  ~/.gitconfig, ~/.gitconfig-github
-├── nvim/            ──stow──▶  ~/.config/nvim/
+├── nvim/            ──ln -s──▶  ~/.config/nvim/  (manual symlink)
 ├── shell/           (sourced by all shells — never stowed)
 ├── tmux/            ──stow──▶  ~/.tmux.conf.local
 ├── vim/             ──stow──▶  ~/.vimrc, ~/.vim/

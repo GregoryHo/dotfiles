@@ -113,14 +113,16 @@ load), then switches versions. Subsequent switches are instant.
 
 ### Persistent Global Packages
 
-`nvm-default-packages` (symlinked to `~/.nvm/default-packages`) lists packages
-that NVM auto-installs on every `nvm install`:
+`nvm-default-packages` is manually symlinked to `~/.nvm/default-packages`
+(not stow-managed, since the target is inside `~/.nvm/`):
 
 ```
-nvm-default-packages  ──stow──▶  ~/.nvm/default-packages
+nvm-default-packages  ── ln -s ──▶  ~/.nvm/default-packages
 ```
 
-This ensures tools like `mgrep`, `prettier`, etc. survive Node version changes.
+NVM reads this file on every `nvm install` and auto-installs the listed
+packages. This ensures tools like `mgrep`, `prettier`, etc. survive Node
+version changes.
 
 ### Oh My Zsh Integration
 
