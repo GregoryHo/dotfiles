@@ -666,7 +666,8 @@ dot_quick_ask() {
   esac
 
   local project="${PWD##*/}"
-  local qa_dir="/tmp/quick-ask-${project}-${agent}"
+  local project_hash=$(echo -n "$PWD" | md5 | head -c 8)
+  local qa_dir="/tmp/quick-ask-${project}-${project_hash}-${agent}"
   mkdir -p "$qa_dir"
 
   # Prune Q&A pairs older than 8 hours
@@ -1251,7 +1252,7 @@ dot_tmux_goto_pane() {
     dot_tmux_cmd select-window -t "${session}:${window}"
     dot_tmux_cmd select-pane -t "${session}:${window}.${pane}"
   else
-    dot_tmux_cmd attach-session -t "${session}:${window}.${pane}"
+    dot_tmux_cmd attach-session -t "$session" \; select-window -t "${session}:${window}" \; select-pane -t "${session}:${window}.${pane}"
   fi
 }
 
