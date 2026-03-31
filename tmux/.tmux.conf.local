@@ -442,15 +442,15 @@ bind-key -n M-l next-window
 #   unreliable. When set, @project_path is used instead.
 
 # prefix + A/a: Anthropic (Claude)
-bind-key A run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; tmux new-window -n agent-claude -c "$p"; tmux set-option -w @project_path "$p"; tmux send-keys "claude; dot_notify_agent claude \"$p\"" C-m'
+bind-key A run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; "$SHELL" -lic "dot_agent_window claude claude \"$p\""'
 bind-key a run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; tmux display-popup -E -w 80% -h 60% -d "$p" "$SHELL -lic \"dot_quick_ask claude\"" || true'
 
 # prefix + O/o: OpenAI (Codex)
-bind-key O run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; tmux new-window -n agent-codex -c "$p"; tmux set-option -w @project_path "$p"; tmux send-keys "codex; dot_notify_agent codex \"$p\"" C-m'
+bind-key O run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; "$SHELL" -lic "dot_agent_window codex codex \"$p\""'
 bind-key o run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; tmux display-popup -E -w 80% -h 60% -d "$p" "$SHELL -lic \"dot_quick_ask codex\"" || true'
 
 # prefix + G/g: Google (Gemini)
-bind-key G run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; tmux new-window -n agent-gemini -c "$p"; tmux set-option -w @project_path "$p"; tmux send-keys "gemini; dot_notify_agent gemini \"$p\"" C-m'
+bind-key G run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; "$SHELL" -lic "dot_agent_window gemini gemini \"$p\""'
 bind-key g run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; tmux display-popup -E -w 80% -h 60% -d "$p" "$SHELL -lic \"dot_quick_ask gemini\"" || true'
 
 # prefix + L/l: Lazygit (lg)
@@ -461,12 +461,15 @@ bind-key l run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_pat
 # prefix + R then A/O/G
 bind-key R switch-client -T agent_continue \; display-message "continue> A=Claude O=Codex G=Gemini Esc=cancel"
 bind-key -T agent_continue Escape switch-client -T prefix
-bind-key -T agent_continue A run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; tmux new-window -n agent-claude -c "$p"; tmux set-option -w @project_path "$p"; tmux send-keys "aac; dot_notify_agent claude \"$p\"" C-m'
-bind-key -T agent_continue O run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; tmux new-window -n agent-codex -c "$p"; tmux set-option -w @project_path "$p"; tmux send-keys "aoc; dot_notify_agent codex \"$p\"" C-m'
-bind-key -T agent_continue G run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; tmux new-window -n agent-gemini -c "$p"; tmux set-option -w @project_path "$p"; tmux send-keys "agc; dot_notify_agent gemini \"$p\"" C-m'
+bind-key -T agent_continue A run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; "$SHELL" -lic "dot_agent_window claude aac \"$p\""'
+bind-key -T agent_continue O run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; "$SHELL" -lic "dot_agent_window codex aoc \"$p\""'
+bind-key -T agent_continue G run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; "$SHELL" -lic "dot_agent_window gemini agc \"$p\""'
 
-# prefix + T: agent dashboard (fzf picker in popup)
+# prefix + T: agent picker (compact popup)
 bind-key T run-shell -b 'tmux display-popup -E -w 80% -h 70% "$SHELL -lic \"tsa\""'
+
+# prefix + D: full agent dashboard (popup with preview, send, stop, kill)
+bind-key D run-shell -b 'tmux display-popup -E -w 80% -h 70% "$SHELL -lic \"tda\""'
 
 # prefix + E: open scrollback in Neovim (like Zellij's Ctrl+s → e)
 bind-key E run-shell -b 'f=$(mktemp /tmp/tmux-scrollback.XXXXXX); tmux capture-pane -p -S - > "$f"; tmux new-window -n scrollback "trap \"rm -f \\\"$f\\\"\" EXIT; nvim +\"normal G\" -c \"setlocal buftype=nofile bufhidden=wipe noswapfile readonly\" \"$f\""'
