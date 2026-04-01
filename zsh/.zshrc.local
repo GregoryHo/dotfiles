@@ -939,9 +939,11 @@ dot_agent_pane_rows() {
       if (agent == "") next
 
       alive = (cmd != user_shell) ? 1 : 0
+      status = alive ? "alive" : "exited"
 
       split(target, t, ":")
       session = t[1]
+      if (length(session) > 12) session = substr(session, 1, 9) "..."
 
       p = (projpath != "" ? projpath : cwd)
       n = split(p, parts, "/")
@@ -954,27 +956,38 @@ dot_agent_pane_rows() {
       if (length(task) > 16) task = substr(task, 1, 13) "..."
 
       idle = (activity != "" && activity > 0) ? now - activity : 0
-      if (!alive)            status = "exited"
-      else if (idle < 10)    status = "active"
-      else if (idle < 300)   status = "busy"
-      else                   status = "idle"
-
       idlefmt = fmttime(idle)
       durfmt = (astarted != "" && astarted+0 > 0) ? fmttime(now - astarted) : "-"
 
+      # cwd: last 2 path components
       cwd_short = cwd
       if (home != "" && substr(cwd_short, 1, length(home)) == home)
         cwd_short = "~" substr(cwd_short, length(home) + 1)
-      if (length(cwd_short) > 40) cwd_short = "..." substr(cwd_short, length(cwd_short) - 36)
+      nc = split(cwd_short, cp, "/")
+      if (nc > 3) cwd_short = cp[nc-1] "/" cp[nc]
+      else if (nc == 3 && cp[1] == "~") cwd_short = cp[2] "/" cp[3]
 
       printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", target, agent, session, project, branch, task, status, idlefmt, durfmt, cwd_short
-    }'
+    }' |
+    while IFS=$'\t' read -r target agent session project branch task astate idle dur cwd; do
+      if [[ "$astate" == "alive" ]]; then
+        local last_line="$(tmux capture-pane -t "$target" -p -S -5 </dev/null 2>/dev/null | \
+          awk '{gsub(/\033\[[?]*[0-9;]*[A-Za-z]/,"")} NF{line=$0} END{if(line)print line}')"
+        if [[ "$last_line" == *❯* ]]; then
+          astate="waiting"
+        else
+          astate="working"
+        fi
+      fi
+      printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+        "$target" "$agent" "$session" "$project" "$branch" "$task" "$astate" "$idle" "$dur" "$cwd"
+    done
 }
 
 dot_agent_pane_format_rows() {
   local mode="${1:-full}"
   local c_claude=$'\033[35m' c_codex=$'\033[32m' c_gemini=$'\033[34m'
-  local c_active=$'\033[32m' c_busy=$'\033[33m' c_idle=$'\033[90m' c_exited=$'\033[31m'
+  local c_working=$'\033[32m' c_waiting=$'\033[33m' c_exited=$'\033[31m'
   local c_reset=$'\033[0m'
 
   dot_agent_pane_rows |
@@ -986,10 +999,9 @@ dot_agent_pane_format_rows() {
         gemini) c_agent="$c_gemini" ;;
       esac
       case "$astate" in
-        active) c_st="$c_active" icon="●" ;;
-        busy)   c_st="$c_busy"   icon="◉" ;;
-        idle)   c_st="$c_idle"   icon="○" ;;
-        exited) c_st="$c_exited" icon="✕" ;;
+        working) c_st="$c_working" icon="●" ;;
+        waiting) c_st="$c_waiting" icon="○" ;;
+        exited)  c_st="$c_exited"  icon="✕" ;;
       esac
       if [[ "$mode" == "compact" ]]; then
         printf '%s\t%s%s%s %s%-7s%s %-20s %-16s %s%-7s%s\n' \
@@ -999,7 +1011,7 @@ dot_agent_pane_format_rows() {
       elif [[ "$astate" == "exited" ]]; then
         printf '%s\t%s%s%s %s%-7s %-12s %-20s %-20s %-16s %-7s %5s %5s  %s%s\n' \
           "$target" "$c_exited" "$icon" "$c_reset" \
-          "$c_idle" "$agent" "$session" "$project" "$branch" "$task" \
+          "$c_exited" "$agent" "$session" "$project" "$branch" "$task" \
           "$astate" "$idle" "$duration" "$cwd" "$c_reset"
       else
         printf '%s\t%s%s%s %s%-7s%s %-12s %-20s %-20s %-16s %s%-7s%s %5s %5s  %s\n' \
@@ -1372,7 +1384,7 @@ tda() {
       dot_fzf_ui --height=100% --ansi --prompt='agent> ' --delimiter=$'\t' --with-nth=2 --accept-nth=1 \
         --border-label=' ctrl-r=refresh  alt-s=send  ctrl-x=stop  alt-k=kill ' \
         --header="$col_hdr" \
-        --preview='tmux capture-pane -t {1} -ep -S -200 2>/dev/null | sed "s/\x1b\[[?]*[0-9;]*[A-Za-ln-z]//g" || echo "No preview"' \
+        --preview='tmux capture-pane -t {1} -ep -S -200 2>/dev/null | sed "s/\x1b\[[?]*[0-9;]*[A-Za-z]//g" || echo "No preview"' \
         --preview-window=down:70%:wrap:follow \
         --preview-label=' Agent Preview ' \
         --listen 127.0.0.1:0 \
@@ -1407,7 +1419,7 @@ tma() {
       --prompt='monitor> ' --delimiter=$'\t' --with-nth=2 \
       --border-label=' Agent Monitor — ctrl-r=refresh  alt-s=send  ctrl-x=stop  alt-k=kill ' \
       --header="$col_hdr" \
-      --preview='tmux capture-pane -t {1} -ep -S -200 2>/dev/null | sed "s/\x1b\[[?]*[0-9;]*[A-Za-ln-z]//g" || echo "No preview"' \
+      --preview='tmux capture-pane -t {1} -ep -S -200 2>/dev/null | sed "s/\x1b\[[?]*[0-9;]*[A-Za-z]//g" || echo "No preview"' \
       --preview-window=down:70%:wrap:follow \
       --preview-label=' Agent Preview ' \
       --listen 127.0.0.1:0 \
