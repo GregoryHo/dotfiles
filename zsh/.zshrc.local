@@ -684,6 +684,9 @@ tat() {
     return 1
   fi
   tmux set-option -w @agent_task "$*"
+  # Set start time on first call (dur column in dashboard)
+  [[ -z "$(tmux show-option -wqv @agent_started_at)" ]] && \
+    tmux set-option -w @agent_started_at "$(date +%s)"
 }
 
 dot_quick_ask() {
