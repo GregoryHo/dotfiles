@@ -911,9 +911,33 @@ dot_agent_pane_rows() {
   local now
   now="$(date +%s)"
 
+  # Build pane_pid → agent map from process tree (single ps call)
+  local agent_map
+  agent_map="$(ps -eo ppid= -o args= 2>/dev/null | awk '
+    {
+      ppid = $1
+      if ($2 == "claude" || $2 == "codex" || $2 == "gemini") {
+        agents[ppid] = $2; next
+      }
+      for (i = 2; i <= NF; i++) {
+        if ($i ~ /\/claude$/) { agents[ppid] = "claude"; break }
+        if ($i ~ /\/codex$/)  { agents[ppid] = "codex";  break }
+        if ($i ~ /\/gemini$/) { agents[ppid] = "gemini"; break }
+      }
+    }
+    END { for (pid in agents) print pid "=" agents[pid] }
+  ')"
+
   dot_tmux_cmd list-panes -a \
-    -F $'#{session_name}:#{window_index}.#{pane_index}\t#{window_name}\t#{pane_current_command}\t#{@project_path}\t#{pane_current_path}\t#{window_activity}\t#{@agent_type}\t#{@agent_branch}\t#{@agent_task}\t#{@agent_started_at}' 2>/dev/null |
-    awk -F'\t' -v now="$now" -v home="$HOME" -v user_shell="$(basename "$SHELL")" '
+    -F $'#{pane_pid}\t#{session_name}:#{window_index}.#{pane_index}\t#{@agent_type}\t#{@project_path}\t#{pane_current_path}\t#{window_activity}\t#{@agent_branch}\t#{@agent_task}\t#{@agent_started_at}' 2>/dev/null |
+    AGENT_MAP="$agent_map" awk -F'\t' -v now="$now" -v home="$HOME" '
+    BEGIN {
+      n = split(ENVIRON["AGENT_MAP"], entries, "\n")
+      for (i = 1; i <= n; i++) {
+        eq = index(entries[i], "=")
+        if (eq > 0) agent_by_pid[substr(entries[i], 1, eq-1)] = substr(entries[i], eq+1)
+      }
+    }
     function fmttime(s) {
       if (s < 60)        return s "s"
       if (s < 3600)      return int(s/60) "m"
@@ -921,25 +945,14 @@ dot_agent_pane_rows() {
       return int(s/86400) "d"
     }
     {
-      target=$1; wname=$2; cmd=$3; projpath=$4; cwd=$5; activity=$6
-      atype=$7; abranch=$8; atask=$9; astarted=$10
+      pane_pid=$1; target=$2; atype=$3; projpath=$4; cwd=$5; activity=$6
+      abranch=$7; atask=$8; astarted=$9
 
+      # Detection: process tree (ground truth) → @agent_type (fallback for exited)
       agent=""
-      if (atype != "") agent = atype
-      if (agent == "") {
-        if (wname ~ /^agent-claude/)      agent="claude"
-        else if (wname ~ /^agent-codex/)  agent="codex"
-        else if (wname ~ /^agent-gemini/) agent="gemini"
-      }
-      if (agent == "") {
-        if (cmd ~ /^claude/)  agent="claude"
-        else if (cmd ~ /^codex/)   agent="codex"
-        else if (cmd ~ /^gemini/)  agent="gemini"
-      }
+      if (pane_pid in agent_by_pid) agent = agent_by_pid[pane_pid]
+      if (agent == "" && atype != "") agent = atype
       if (agent == "") next
-
-      alive = (cmd != user_shell) ? 1 : 0
-      status = alive ? "alive" : "exited"
 
       split(target, t, ":")
       session = t[1]
@@ -967,18 +980,15 @@ dot_agent_pane_rows() {
       if (nc > 3) cwd_short = cp[nc-1] "/" cp[nc]
       else if (nc == 3 && cp[1] == "~") cwd_short = cp[2] "/" cp[3]
 
-      printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", target, agent, session, project, branch, task, status, idlefmt, durfmt, cwd_short
+      printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", target, agent, (atype != "" ? atype : "-"), session, project, branch, task, idlefmt, durfmt, cwd_short
     }' |
-    while IFS=$'\t' read -r target agent session project branch task astate idle dur cwd; do
-      if [[ "$astate" == "alive" ]]; then
-        local last_line="$(tmux capture-pane -t "$target" -p -S -5 </dev/null 2>/dev/null | \
-          awk '{gsub(/\033\[[?]*[0-9;]*[A-Za-z]/,"")} NF{line=$0} END{if(line)print line}')"
-        if [[ "$last_line" == *❯* ]]; then
-          astate="waiting"
-        else
-          astate="working"
-        fi
-      fi
+    while IFS=$'\t' read -r target agent atype session project branch task idle dur cwd; do
+      # Backfill @agent_type for windows detected by name only (survives rename)
+      [[ "$atype" == "-" ]] && tmux set-option -w -t "$target" @agent_type "$agent" </dev/null 2>/dev/null
+      local last_line="$(tmux capture-pane -t "$target" -p -S -5 </dev/null 2>/dev/null | \
+        awk '{gsub(/\033\[[?]*[0-9;]*[A-Za-z]/,"")} NF{line=$0} END{if(line)print line}')"
+      local astate="working"
+      [[ "$last_line" == *❯* ]] && astate="waiting"
       printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
         "$target" "$agent" "$session" "$project" "$branch" "$task" "$astate" "$idle" "$dur" "$cwd"
     done
@@ -987,7 +997,7 @@ dot_agent_pane_rows() {
 dot_agent_pane_format_rows() {
   local mode="${1:-full}"
   local c_claude=$'\033[35m' c_codex=$'\033[32m' c_gemini=$'\033[34m'
-  local c_working=$'\033[32m' c_waiting=$'\033[33m' c_exited=$'\033[31m'
+  local c_working=$'\033[32m' c_waiting=$'\033[33m'
   local c_reset=$'\033[0m'
 
   dot_agent_pane_rows |
@@ -1001,18 +1011,12 @@ dot_agent_pane_format_rows() {
       case "$astate" in
         working) c_st="$c_working" icon="●" ;;
         waiting) c_st="$c_waiting" icon="○" ;;
-        exited)  c_st="$c_exited"  icon="✕" ;;
       esac
       if [[ "$mode" == "compact" ]]; then
         printf '%s\t%s%s%s %s%-7s%s %-20s %-16s %s%-7s%s\n' \
           "$target" "$c_st" "$icon" "$c_reset" \
           "$c_agent" "$agent" "$c_reset" "$project" "$task" \
           "$c_st" "$astate" "$c_reset"
-      elif [[ "$astate" == "exited" ]]; then
-        printf '%s\t%s%s%s %s%-7s %-12s %-20s %-20s %-16s %-7s %5s %5s  %s%s\n' \
-          "$target" "$c_exited" "$icon" "$c_reset" \
-          "$c_exited" "$agent" "$session" "$project" "$branch" "$task" \
-          "$astate" "$idle" "$duration" "$cwd" "$c_reset"
       else
         printf '%s\t%s%s%s %s%-7s%s %-12s %-20s %-20s %-16s %s%-7s%s %5s %5s  %s\n' \
           "$target" "$c_st" "$icon" "$c_reset" \
