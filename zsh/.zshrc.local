@@ -983,7 +983,7 @@ dot_agent_pane_rows() {
       printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", target, agent, (atype != "" ? atype : "-"), session, project, branch, task, idlefmt, durfmt, cwd_short
     }' |
     while IFS=$'\t' read -r target agent atype session project branch task idle dur cwd; do
-      # Backfill @agent_type for windows detected by name only (survives rename)
+      # Backfill @agent_type so detection persists after agent exits (process tree gone)
       [[ "$atype" == "-" ]] && tmux set-option -w -t "$target" @agent_type "$agent" </dev/null 2>/dev/null
       local last_line="$(tmux capture-pane -t "$target" -p -S -5 </dev/null 2>/dev/null | \
         awk '{gsub(/\033\[[?]*[0-9;]*[A-Za-z]/,"")} NF{line=$0} END{if(line)print line}')"
