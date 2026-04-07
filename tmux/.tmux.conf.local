@@ -393,6 +393,9 @@ set -g mouse on
 set -g status-keys vi
 set -g mode-keys vi
 
+# allow escape sequences passthrough (needed for Claude Code no-flicker mode)
+set -g allow-passthrough on
+
 # replace C-b by C-a instead of using both prefixes
 # set -gu prefix2
 # unbind C-a
@@ -472,7 +475,7 @@ bind-key T run-shell -b 'tmux display-popup -E -w 80% -h 70% "$SHELL -lic \"tsa\
 bind-key D run-shell -b 'tmux display-popup -E -w 80% -h 70% "$SHELL -lic \"tda\""'
 
 # prefix + K: set agent task (prompts for name, starts duration timer)
-bind-key K command-prompt -p 'task>' 'set-option -w @agent_task "%1" ; run-shell -b "[ -z \"#{@agent_started_at}\" ] && tmux set-option -w @agent_started_at $(date +%s)"'
+bind-key K command-prompt -p 'task>' 'set-option -w @agent_task "%1" ; run-shell -b "[ -z \"#{@agent_started_at}\" ] && tmux set-option -w @agent_started_at $(date +%s) || true"'
 
 # prefix + E: open scrollback in Neovim (like Zellij's Ctrl+s → e)
 bind-key E run-shell -b 'f=$(mktemp /tmp/tmux-scrollback.XXXXXX); tmux capture-pane -p -S - > "$f"; tmux new-window -n scrollback "trap \"rm -f \\\"$f\\\"\" EXIT; nvim +\"normal G\" -c \"setlocal buftype=nofile bufhidden=wipe noswapfile readonly\" \"$f\""'
