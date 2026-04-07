@@ -646,13 +646,47 @@ lg() {
   lazygit "$@"
 }
 
-unalias tl tx ts tsw tk tw tsa tla aac aoc agc lg 2>/dev/null
+unalias tl tx ts tsw tk tw tsa tda tla tma tat aac aoc agc lg 2>/dev/null
 
 dot_notify_agent() {
   local agent="${1:-agent}" project="${2:-}"
   local name="${project##*/}"
   [[ -z "$name" ]] && name="$agent"
-  osascript -e "display notification \"${agent} finished in ${name}\" with title \"Agent Complete\" sound name \"Glass\"" 2>/dev/null
+  local task branch msg
+  task="$(tmux show-option -wqv -t "$TMUX_PANE" @agent_task 2>/dev/null)"
+  branch="$(tmux show-option -wqv -t "$TMUX_PANE" @agent_branch 2>/dev/null)"
+  msg="${agent} finished"
+  [[ -n "$task" && "$task" != "-" ]] && msg="${msg} '${task}'"
+  [[ -n "$branch" && "$branch" != "-" ]] && msg="${msg} on ${branch}"
+  msg="${msg} in ${name}"
+  osascript -e "display notification \"${msg}\" with title \"Agent Complete\" sound name \"Glass\"" 2>/dev/null
+}
+
+dot_agent_window() {
+  local agent="$1" cmd="$2" path="$3"
+  tmux new-window -n "agent-$agent" -c "$path"
+  local branch
+  branch="$(cd "$path" && git branch --show-current 2>/dev/null)" || true
+  local task="${branch:--}"
+  task="${task#feature/}"; task="${task#bugfix/}"; task="${task#hotfix/}"
+  task="${task#fix/}"; task="${task#chore/}"; task="${task#release/}"; task="${task#refactor/}"
+  tmux set-option -w @project_path "$path" \; \
+       set-option -w @agent_type "$agent" \; \
+       set-option -w @agent_started_at "$(date +%s)" \; \
+       set-option -w @agent_branch "${branch:--}" \; \
+       set-option -w @agent_task "$task"
+  tmux send-keys "$cmd; dot_notify_agent $agent \"$path\"" C-m
+}
+
+tat() {
+  if [[ -z "$*" ]]; then
+    echo "Usage: tat <task description>"
+    return 1
+  fi
+  tmux set-option -w @agent_task "$*"
+  # Set start time on first call (dur column in dashboard)
+  [[ -z "$(tmux show-option -wqv @agent_started_at)" ]] && \
+    tmux set-option -w @agent_started_at "$(date +%s)"
 }
 
 dot_quick_ask() {
@@ -880,59 +914,97 @@ dot_agent_pane_rows() {
   local now
   now="$(date +%s)"
 
-  dot_tmux_cmd list-panes -a \
-    -F $'#{session_name}:#{window_index}.#{pane_index}\t#{window_name}\t#{pane_current_command}\t#{@project_path}\t#{pane_current_path}\t#{window_activity}' 2>/dev/null |
-    awk -F'\t' -v now="$now" -v home="$HOME" -v user_shell="$(basename "$SHELL")" '
+  # Build pane_pid → agent map from process tree (single ps call)
+  local agent_map
+  agent_map="$(ps -eo ppid= -o args= 2>/dev/null | awk '
     {
-      target=$1; wname=$2; cmd=$3; projpath=$4; cwd=$5; activity=$6
-      agent=""
-      if (wname ~ /^agent-claude/)      agent="claude"
-      else if (wname ~ /^agent-codex/)  agent="codex"
-      else if (wname ~ /^agent-gemini/) agent="gemini"
-      if (agent == "") {
-        if (cmd ~ /^claude/)  agent="claude"
-        else if (cmd ~ /^codex/)   agent="codex"
-        else if (cmd ~ /^gemini/)  agent="gemini"
+      ppid = $1
+      if ($2 == "claude" || $2 == "codex" || $2 == "gemini") {
+        agents[ppid] = $2; next
       }
-      if (agent == "") next
+      for (i = 2; i <= NF; i++) {
+        if ($i ~ /\/claude$/) { agents[ppid] = "claude"; break }
+        if ($i ~ /\/codex$/)  { agents[ppid] = "codex";  break }
+        if ($i ~ /\/gemini$/) { agents[ppid] = "gemini"; break }
+      }
+    }
+    END { for (pid in agents) print pid "=" agents[pid] }
+  ')"
 
-      alive = (cmd != user_shell) ? 1 : 0
+  dot_tmux_cmd list-panes -a \
+    -F $'#{pane_pid}\t#{session_name}:#{window_index}.#{pane_index}\t#{@agent_type}\t#{@project_path}\t#{pane_current_path}\t#{window_activity}\t#{@agent_branch}\t#{@agent_task}\t#{@agent_started_at}' 2>/dev/null |
+    AGENT_MAP="$agent_map" awk -F'\t' -v now="$now" -v home="$HOME" '
+    BEGIN {
+      n = split(ENVIRON["AGENT_MAP"], entries, "\n")
+      for (i = 1; i <= n; i++) {
+        eq = index(entries[i], "=")
+        if (eq > 0) agent_by_pid[substr(entries[i], 1, eq-1)] = substr(entries[i], eq+1)
+      }
+    }
+    function fmttime(s) {
+      if (s < 60)        return s "s"
+      if (s < 3600)      return int(s/60) "m"
+      if (s < 86400)     return int(s/3600) "h"
+      return int(s/86400) "d"
+    }
+    {
+      pane_pid=$1; target=$2; atype=$3; projpath=$4; cwd=$5; activity=$6
+      abranch=$7; atask=$8; astarted=$9
+
+      # Detection: process tree (ground truth) → @agent_type (fallback for exited)
+      agent=""
+      if (pane_pid in agent_by_pid) agent = agent_by_pid[pane_pid]
+      if (agent == "" && atype != "") agent = atype
+      if (agent == "") next
 
       split(target, t, ":")
       session = t[1]
+      if (length(session) > 12) session = substr(session, 1, 9) "..."
 
       p = (projpath != "" ? projpath : cwd)
       n = split(p, parts, "/")
       project = (n > 0 ? parts[n] : p)
-      if (length(project) > 30) project = substr(project, 1, 27) "..."
+      if (length(project) > 20) project = substr(project, 1, 17) "..."
+
+      branch = (abranch != "" ? abranch : "-")
+      task = (atask != "" ? atask : "-")
+      if (length(branch) > 20) branch = substr(branch, 1, 17) "..."
+      if (length(task) > 16) task = substr(task, 1, 13) "..."
 
       idle = (activity != "" && activity > 0) ? now - activity : 0
-      if (!alive)            status = "exited"
-      else if (idle < 10)    status = "active"
-      else if (idle < 300)   status = "busy"
-      else                   status = "idle"
+      idlefmt = fmttime(idle)
+      durfmt = (astarted != "" && astarted+0 > 0) ? fmttime(now - astarted) : "-"
 
-      if (idle < 60)        idlefmt = idle "s"
-      else if (idle < 3600) idlefmt = int(idle/60) "m"
-      else if (idle < 86400) idlefmt = int(idle/3600) "h"
-      else                  idlefmt = int(idle/86400) "d"
-
+      # cwd: last 2 path components
       cwd_short = cwd
       if (home != "" && substr(cwd_short, 1, length(home)) == home)
         cwd_short = "~" substr(cwd_short, length(home) + 1)
-      if (length(cwd_short) > 40) cwd_short = "..." substr(cwd_short, length(cwd_short) - 36)
+      nc = split(cwd_short, cp, "/")
+      if (nc > 3) cwd_short = cp[nc-1] "/" cp[nc]
+      else if (nc == 3 && cp[1] == "~") cwd_short = cp[2] "/" cp[3]
 
-      printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", target, agent, session, project, status, idlefmt, cwd_short
-    }'
+      printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", target, agent, (atype != "" ? atype : "-"), session, project, branch, task, idlefmt, durfmt, cwd_short
+    }' |
+    while IFS=$'\t' read -r target agent atype session project branch task idle dur cwd; do
+      # Backfill @agent_type so detection persists after agent exits (process tree gone)
+      [[ "$atype" == "-" ]] && tmux set-option -w -t "$target" @agent_type "$agent" </dev/null 2>/dev/null
+      local last_line="$(tmux capture-pane -t "$target" -p -S -5 </dev/null 2>/dev/null | \
+        awk '{gsub(/\033\[[?]*[0-9;]*[A-Za-z]/,"")} NF{line=$0} END{if(line)print line}')"
+      local astate="working"
+      [[ "$last_line" == *❯* ]] && astate="waiting"
+      printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+        "$target" "$agent" "$session" "$project" "$branch" "$task" "$astate" "$idle" "$dur" "$cwd"
+    done
 }
 
-dot_agent_pane_pretty_rows() {
+dot_agent_pane_format_rows() {
+  local mode="${1:-full}"
   local c_claude=$'\033[35m' c_codex=$'\033[32m' c_gemini=$'\033[34m'
-  local c_active=$'\033[32m' c_busy=$'\033[33m' c_idle=$'\033[90m' c_exited=$'\033[31m'
+  local c_working=$'\033[32m' c_waiting=$'\033[33m'
   local c_reset=$'\033[0m'
 
   dot_agent_pane_rows |
-    while IFS=$'\t' read -r target agent session project astate idle cwd; do
+    while IFS=$'\t' read -r target agent session project branch task astate idle duration cwd; do
       local c_agent="" icon="" c_st=""
       case "$agent" in
         claude) c_agent="$c_claude" ;;
@@ -940,24 +1012,24 @@ dot_agent_pane_pretty_rows() {
         gemini) c_agent="$c_gemini" ;;
       esac
       case "$astate" in
-        active) c_st="$c_active" icon="●" ;;
-        busy)   c_st="$c_busy"   icon="◉" ;;
-        idle)   c_st="$c_idle"   icon="○" ;;
-        exited) c_st="$c_exited" icon="✕" ;;
+        working) c_st="$c_working" icon="●" ;;
+        waiting) c_st="$c_waiting" icon="○" ;;
       esac
-      if [[ "$astate" == "exited" ]]; then
-        printf '%s\t%s%s%s %s%-8s %-16s %-30s %-8s %5s  %s%s\n' \
-          "$target" "$c_exited" "$icon" "$c_reset" \
-          "$c_idle" "$agent" "$session" "$project" \
-          "$astate" "$idle" "$cwd" "$c_reset"
-      else
-        printf '%s\t%s%s%s %s%-8s%s %-16s %-30s %s%-8s%s %5s  %s\n' \
+      if [[ "$mode" == "compact" ]]; then
+        printf '%s\t%s%s%s %s%-7s%s %-20s %-16s %s%-7s%s\n' \
           "$target" "$c_st" "$icon" "$c_reset" \
-          "$c_agent" "$agent" "$c_reset" "$session" "$project" \
-          "$c_st" "$astate" "$c_reset" "$idle" "$cwd"
+          "$c_agent" "$agent" "$c_reset" "$project" "$task" \
+          "$c_st" "$astate" "$c_reset"
+      else
+        printf '%s\t%s%s%s %s%-7s%s %-12s %-20s %-20s %-16s %s%-7s%s %5s %5s  %s\n' \
+          "$target" "$c_st" "$icon" "$c_reset" \
+          "$c_agent" "$agent" "$c_reset" "$session" "$project" "$branch" "$task" \
+          "$c_st" "$astate" "$c_reset" "$idle" "$duration" "$cwd"
       fi
     done
 }
+dot_agent_pane_pretty_rows() { dot_agent_pane_format_rows full; }
+dot_agent_pane_picker_rows() { dot_agent_pane_format_rows compact; }
 
 # tmux session control plane (works inside and outside tmux)
 tl() {
@@ -1273,6 +1345,32 @@ tsa() {
   dot_require_fzf || return 1
 
   local rows target
+  local reload_cmd='source ~/.zshrc.local 2>/dev/null; dot_agent_pane_picker_rows'
+  rows="$(dot_agent_pane_picker_rows)"
+  if [[ -z "$rows" ]]; then
+    echo "No active agents. Launch with prefix+A/O/G."
+    read -sk1 '?Press any key to close...'
+    return 0
+  fi
+
+  local col_hdr
+  col_hdr="$(printf '  %-7s %-20s %-16s %s' type project task status)"
+
+  target="$(
+    printf '%s\n' "$rows" |
+      dot_fzf_ui --height=100% --ansi --prompt='agent> ' --delimiter=$'\t' --with-nth=2 --accept-nth=1 \
+        --header="$col_hdr" \
+        --bind "ctrl-r:reload-sync($reload_cmd)" \
+        --bind 'esc:abort'
+  )"
+  [[ -z "$target" ]] && return
+  dot_tmux_goto_pane "$target"
+}
+
+tda() {
+  dot_require_fzf || return 1
+
+  local rows target
   local reload_cmd='source ~/.zshrc.local 2>/dev/null; dot_agent_pane_pretty_rows'
   rows="$(dot_agent_pane_pretty_rows)"
   if [[ -z "$rows" ]]; then
@@ -1282,7 +1380,7 @@ tsa() {
   fi
 
   local col_hdr
-  col_hdr="$(printf '  %-8s %-16s %-30s %-8s %5s  %s' type session project status idle cwd)"
+  col_hdr="$(printf '  %-7s %-12s %-20s %-20s %-16s %-7s %5s %5s  %s' type session project branch task status idle dur cwd)"
 
   local fzf_enter
   fzf_enter='enter:transform:if [[ {fzf:prompt} =~ send ]]; then if [[ -n {q} ]]; then echo "execute-silent(tmux send-keys -t {1} -l {q}; tmux send-keys -t {1} Enter)+clear-query+enable-search+change-prompt(agent> )+reload-sync(___RELOAD___)"; else echo "clear-query+enable-search+change-prompt(agent> )"; fi; else echo accept; fi'
@@ -1293,7 +1391,7 @@ tsa() {
       dot_fzf_ui --height=100% --ansi --prompt='agent> ' --delimiter=$'\t' --with-nth=2 --accept-nth=1 \
         --border-label=' ctrl-r=refresh  alt-s=send  ctrl-x=stop  alt-k=kill ' \
         --header="$col_hdr" \
-        --preview='tmux capture-pane -t {1} -ep -S -200 2>/dev/null | sed "s/\x1b\[[?]*[0-9;]*[A-Za-ln-z]//g" || echo "No preview"' \
+        --preview='tmux capture-pane -t {1} -ep -S -200 2>/dev/null || echo "No preview"' \
         --preview-window=down:70%:wrap:follow \
         --preview-label=' Agent Preview ' \
         --listen 127.0.0.1:0 \
@@ -1310,6 +1408,38 @@ tsa() {
   dot_tmux_goto_pane "$target"
 }
 
+tma() {
+  dot_require_fzf || return 1
+
+  local reload_cmd='source ~/.zshrc.local 2>/dev/null; dot_agent_pane_pretty_rows'
+  local reload_action="reload-sync(${reload_cmd})+refresh-preview"
+
+  local col_hdr
+  col_hdr="$(printf '  %-7s %-12s %-20s %-20s %-16s %-7s %5s %5s  %s' type session project branch task status idle dur cwd)"
+
+  local fzf_enter
+  fzf_enter='enter:transform:if [[ {fzf:prompt} =~ send ]]; then if [[ -n {q} ]]; then echo "execute-silent(tmux send-keys -t {1} -l {q}; tmux send-keys -t {1} Enter)+clear-query+enable-search+change-prompt(monitor> )+reload-sync(___RELOAD___)"; else echo "clear-query+enable-search+change-prompt(monitor> )"; fi; fi'
+  fzf_enter="${fzf_enter//___RELOAD___/$reload_cmd}"
+
+  dot_agent_pane_pretty_rows |
+    dot_fzf_ui --height=100% --ansi \
+      --prompt='monitor> ' --delimiter=$'\t' --with-nth=2 \
+      --border-label=' Agent Monitor — ctrl-r=refresh  alt-s=send  ctrl-x=stop  alt-k=kill ' \
+      --header="$col_hdr" \
+      --preview='tmux capture-pane -t {1} -ep -S -200 2>/dev/null || echo "No preview"' \
+      --preview-window=down:70%:wrap:follow \
+      --preview-label=' Agent Preview ' \
+      --listen 127.0.0.1:0 \
+      --bind "start:execute-silent{while sleep 5; do curl -sXPOST http://127.0.0.1:\$FZF_PORT --data-raw '${reload_action}' 2>/dev/null || break; done &}" \
+      --bind 'ctrl-/:change-preview-window(down:80%:wrap:follow|down:70%:wrap:follow|hidden)' \
+      --bind "ctrl-r:reload-sync($reload_cmd)+refresh-preview" \
+      --bind "ctrl-x:execute-silent(tmux send-keys -t {1} C-c)+reload-sync($reload_cmd)" \
+      --bind "alt-k:execute-silent(tmux kill-pane -t {1})+reload-sync($reload_cmd)" \
+      --bind 'alt-s:disable-search+clear-query+change-prompt(send> )' \
+      --bind "$fzf_enter" \
+      --bind 'esc:transform:[[ {fzf:prompt} =~ send ]] && echo "clear-query+enable-search+change-prompt(monitor> )" || echo abort'
+}
+
 tla() {
   local rows
   rows="$(dot_agent_pane_rows)"
@@ -1318,9 +1448,9 @@ tla() {
     return 0
   fi
 
-  printf '%-8s %-16s %-30s %-8s %5s  %s\n' "type" "session" "project" "status" "idle" "cwd"
+  printf '%-7s %-12s %-20s %-20s %-16s %-7s %5s %5s  %s\n' "type" "session" "project" "branch" "task" "status" "idle" "dur" "cwd"
   printf '%s\n' "$rows" |
     awk -F'\t' '{
-      printf "%-8s %-16s %-30s %-8s %5s  %s\n", $2, $3, $4, $5, $6, $7
+      printf "%-7s %-12s %-20s %-20s %-16s %-7s %5s %5s  %s\n", $2, $3, $4, $5, $6, $7, $8, $9, $10
     }'
 }
