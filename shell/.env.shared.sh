@@ -48,6 +48,9 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 # Antigravity
 export PATH="$HOME/.antigravity/antigravity/bin:$PATH"
 
+# Obsidian CLI
+export PATH="$PATH:/Applications/Obsidian.app/Contents/MacOS"
+
 # Local/cargo env scripts (if present)
 [ -f "$HOME/.local/bin/env" ] && . "$HOME/.local/bin/env"
 [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
