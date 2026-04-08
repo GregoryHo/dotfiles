@@ -4,6 +4,7 @@
 export TMUX_POWERLINE_PATCHED_FONT_IN_USE="true"
 export TMUX_POWERLINE_THEME="tokyonight_storm_minimal"
 export TMUX_POWERLINE_DIR_USER_THEMES="${XDG_CONFIG_HOME:-$HOME/.config}/tmux-powerline/themes"
+export TMUX_POWERLINE_DIR_USER_SEGMENTS="${XDG_CONFIG_HOME:-$HOME/.config}/tmux-powerline/segments"
 export TMUX_POWERLINE_STATUS_INTERVAL="5"
 export TMUX_POWERLINE_STATUS_JUSTIFICATION="left"
 export TMUX_POWERLINE_STATUS_LEFT_LENGTH="60"
