@@ -663,19 +663,19 @@ dot_notify_agent() {
 }
 
 dot_agent_window() {
-  local agent="$1" cmd="$2" path="$3"
-  tmux new-window -n "agent-$agent" -c "$path"
+  local agent="$1" cmd="$2" dir="$3"
+  tmux new-window -n "agent-$agent" -c "$dir"
   local branch
-  branch="$(cd "$path" && git branch --show-current 2>/dev/null)" || true
+  branch="$(cd "$dir" && git branch --show-current 2>/dev/null)" || true
   local task="${branch:--}"
   task="${task#feature/}"; task="${task#bugfix/}"; task="${task#hotfix/}"
   task="${task#fix/}"; task="${task#chore/}"; task="${task#release/}"; task="${task#refactor/}"
-  tmux set-option -w @project_path "$path" \; \
+  tmux set-option -w @project_path "$dir" \; \
        set-option -w @agent_type "$agent" \; \
        set-option -w @agent_started_at "$(date +%s)" \; \
        set-option -w @agent_branch "${branch:--}" \; \
        set-option -w @agent_task "$task"
-  tmux send-keys "$cmd; dot_notify_agent $agent \"$path\"" C-m
+  tmux send-keys "$cmd; dot_notify_agent $agent \"$dir\"" C-m
 }
 
 tat() {

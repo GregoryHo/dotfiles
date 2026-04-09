@@ -58,7 +58,7 @@ fi
 if [ -z "$TMUX_POWERLINE_RIGHT_STATUS_SEGMENTS" ]; then
   TMUX_POWERLINE_RIGHT_STATUS_SEGMENTS=(
     "agent_status #9ece6a #1f2335"
+    "agent_task #bb9af7 #1f2335"
     "date #7dcfff #1f2335"
-    "time #7dcfff #1f2335 ${TMUX_POWERLINE_SEPARATOR_LEFT_THIN}"
   )
 fi
