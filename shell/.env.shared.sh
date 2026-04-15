@@ -1,11 +1,13 @@
 # Shared login-shell environment for zsh/bash.
 # Keep this file shell-agnostic and focused on exports/bootstrap only.
 
-# Prevent duplicate exports when multiple startup files source this script.
+# Prevent duplicate setup within the same shell.
+# NOT exported — child shells (e.g. tmux panes) must re-run this file because
+# macOS path_helper (/etc/zprofile) reorders PATH on every shell startup.
 if [ -n "${DOTFILES_ENV_SHARED_LOADED:-}" ]; then
   return 0
 fi
-export DOTFILES_ENV_SHARED_LOADED=1
+DOTFILES_ENV_SHARED_LOADED=1
 
 # XDG base directories
 export XDG_CONFIG_HOME="$HOME/.config"
@@ -54,6 +56,12 @@ export PATH="$PATH:/Applications/Obsidian.app/Contents/MacOS"
 # Local/cargo env scripts (if present)
 [ -f "$HOME/.local/bin/env" ] && . "$HOME/.local/bin/env"
 [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+
+# Deduplicate PATH (keeps first occurrence, preserves order).
+# Needed because child shells inherit PATH then re-prepend above entries.
+PATH="$(printf '%s' "$PATH" | awk -v RS=: -v ORS=: '!seen[$0]++')"
+PATH="${PATH%:}"
+export PATH
 
 # Ensure node is available for non-interactive login shells (e.g. zsh -lc, env node shebang).
 export NVM_DIR="$HOME/.nvm"
