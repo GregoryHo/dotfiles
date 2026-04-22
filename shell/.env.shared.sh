@@ -12,6 +12,11 @@ DOTFILES_ENV_SHARED_LOADED=1
 # XDG base directories
 export XDG_CONFIG_HOME="$HOME/.config"
 
+# Default editor (git, less, ghostty write_scrollback_file:open, etc.)
+export EDITOR="nvim"
+export VISUAL="nvim"
+export GIT_EDITOR="nvim"
+
 # Core PATH
 export PATH="/opt/homebrew/bin:$PATH"
 export PATH="$PATH:/usr/local/bin"
