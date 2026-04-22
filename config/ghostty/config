@@ -77,8 +77,8 @@ window-save-state = always
 keybind = ctrl+a>a=text:\x01
 keybind = ctrl+a>c=new_tab
 keybind = ctrl+a>x=close_surface
-keybind = ctrl+a>percent=new_split:right
-keybind = ctrl+a>quote=new_split:down
+keybind = ctrl+a>v=new_split:right
+keybind = ctrl+a>s=new_split:down
 keybind = ctrl+a>h=goto_split:left
 keybind = ctrl+a>j=goto_split:bottom
 keybind = ctrl+a>k=goto_split:top
@@ -93,12 +93,17 @@ keybind = cmd+shift+up=jump_to_prompt:-1
 keybind = cmd+shift+down=jump_to_prompt:1
 
 # --- 對應原 tmux prefix+L:lazygit 新 tab ---
-keybind = cmd+shift+g=new_tab,text:lazygit\n
+# Ghostty chain 語法:首行定義 trigger + 第一個 action;後續 chain= 附加到同 trigger。
+keybind = cmd+shift+g=new_tab
+keybind = chain=text:lazygit\n
 
 # --- 對應原 tmux prefix+E:scrollback 丟 $EDITOR(nvim) ---
 keybind = cmd+shift+e=write_scrollback_file:open
 
 # --- 對應原 tmux prefix+A/O/G:啟動 Claude/Codex/Gemini ---
-keybind = cmd+shift+j=new_tab,text:aa\n
-keybind = cmd+shift+k=new_tab,text:ao\n
-keybind = cmd+shift+l=new_tab,text:ag\n
+keybind = cmd+shift+j=new_tab
+keybind = chain=text:aa\n
+keybind = cmd+shift+k=new_tab
+keybind = chain=text:ao\n
+keybind = cmd+shift+l=new_tab
+keybind = chain=text:ag\n
