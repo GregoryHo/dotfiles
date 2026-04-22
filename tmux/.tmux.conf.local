@@ -151,6 +151,11 @@ tmux_conf_theme_pane_active_border="#{?pane_in_mode,$tmux_conf_theme_colour_9,#{
 tmux_conf_theme_pane_indicator="$tmux_conf_theme_colour_4"
 tmux_conf_theme_pane_active_indicator="$tmux_conf_theme_colour_4"
 
+# -- pane border header -------------------------------------------------------
+# Top bar showing pane index + title. pane_title comes from zsh's OSC 2 sequence.
+set -g pane-border-status top
+set -g pane-border-format '#{?pane_active,#[reverse],}#{pane_index}#[default] "#{pane_title}"'
+
 # status line style
 tmux_conf_theme_message_fg="$tmux_conf_theme_colour_1"
 tmux_conf_theme_message_bg="$tmux_conf_theme_colour_5"
@@ -551,6 +556,12 @@ set -g @plugin 'erikw/tmux-powerline'
 set -g status-position bottom
 # Ensure tmux-powerline applies immediately when plugin files are present.
 if-shell '[ -x "$HOME/.tmux/plugins/tmux-powerline/main.tmux" ]' 'run-shell "$HOME/.tmux/plugins/tmux-powerline/main.tmux"'
+
+# Workaround: oh-my-tmux's plugin discovery can fail on `tmux source-file` reload,
+# leaving @tpm_plugins empty and `prefix + I` a no-op. Mirror the @plugin list here
+# so tpm's install_plugins always has a fallback to read from.
+# KEEP IN SYNC with the `set -g @plugin` declarations above.
+set -g '@tpm_plugins' 'tmux-plugins/tmux-resurrect tmux-plugins/tmux-continuum christoomey/vim-tmux-navigator fcsonline/tmux-thumbs erikw/tmux-powerline'
 
 # -- custom variables ----------------------------------------------------------
 

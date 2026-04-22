@@ -150,7 +150,7 @@ fcd() {
     printf '%s\n' "$rows" |
       dot_fzf_ui --prompt='cd> ' --delimiter=$'\t' --with-nth=2 \
         --header='name                     path' |
-      cut -f1
+      awk -F'\t' '{print $1}'
   )"
   [[ -n "$dir" ]] && cd "$dir"
 }
@@ -173,7 +173,7 @@ fcda() {
     printf '%s\n' "$rows" |
       dot_fzf_ui --prompt='cd all> ' --delimiter=$'\t' --with-nth=2 \
         --header='name                     path' |
-      cut -f1
+      awk -F'\t' '{print $1}'
   )"
   [[ -n "$dir" ]] && cd "$dir"
 }
@@ -199,7 +199,7 @@ untrash() {
     printf '%s\n' "$rows" |
       dot_fzf_ui --prompt='untrash> ' --delimiter=$'\t' --with-nth=2 \
         --header='name                              source path' |
-      cut -f1
+      awk -F'\t' '{print $1}'
   )"
   [[ -z "$src" ]] && return
 
@@ -211,7 +211,7 @@ inside_work_tree() { git rev-parse --is-inside-work-tree >/dev/null; }
 
 dot_git_local_branch_rows() {
   git for-each-ref --sort=-committerdate refs/heads \
-    --format=$'%(refname:short)\t%(if)%(HEAD)%(then)*%(else) %(end)\t%(upstream:short)\t%(committerdate:relative)' |
+    --format=$'%(refname:strip=2)\t%(if)%(HEAD)%(then)*%(else) %(end)\t%(upstream:short)\t%(committerdate:relative)' |
     awk -F'\t' '{
       upstream=$3; if (upstream=="") upstream="-";
       printf "%s\t%-2s %-28s %-24s %s\n", $1, $2, $1, upstream, $4
@@ -220,7 +220,7 @@ dot_git_local_branch_rows() {
 
 dot_git_remote_branch_rows() {
   git for-each-ref --sort=-committerdate refs/remotes/origin \
-    --format=$'%(refname:short)\t%(committerdate:relative)' |
+    --format=$'%(refname:strip=2)\t%(committerdate:relative)' |
     awk -F'\t' '$1 != "origin/HEAD" {
       short=$1; sub(/^origin\//, "", short);
       printf "%s\t%-30s %s\n", $1, short, $2
@@ -283,7 +283,7 @@ gdb() {
     printf '%s\n' "$rows" |
       dot_fzf_ui --prompt='git branch -d> ' --delimiter=$'\t' --with-nth=2 \
         --header='m  branch                        upstream                 last commit' |
-      cut -f1
+      awk -F'\t' '{print $1}'
   )" || return
   [[ -z "$branch" ]] && return
 
@@ -305,7 +305,7 @@ gdfb() {
     printf '%s\n' "$rows" |
       dot_fzf_ui --prompt='git branch -D> ' --delimiter=$'\t' --with-nth=2 \
         --header='m  branch                        upstream                 last commit' |
-      cut -f1
+      awk -F'\t' '{print $1}'
   )" || return
   [[ -z "$branch" ]] && return
 
@@ -328,7 +328,7 @@ gcob() {
     printf '%s\n' "$rows" |
       dot_fzf_ui --prompt='git checkout> ' --delimiter=$'\t' --with-nth=2 \
         --header='m  branch                        upstream                 last commit' |
-      cut -f1
+      awk -F'\t' '{print $1}'
   )" || return
   [[ -z "$branch" ]] && return
 
@@ -348,7 +348,7 @@ gcorb() {
     printf '%s\n' "$rows" |
       dot_fzf_ui --prompt='git checkout remote> ' --delimiter=$'\t' --with-nth=2 \
         --header='remote branch                   last commit' |
-      cut -f1
+      awk -F'\t' '{print $1}'
   )" || return
   [[ -z "$remote" ]] && return
 
@@ -452,9 +452,9 @@ wtab() {
   rows="$(
     {
       git for-each-ref --sort=-committerdate refs/heads \
-        --format=$'%(refname:short)\tlocal\t%(committerdate:relative)'
+        --format=$'%(refname:strip=2)\tlocal\t%(committerdate:relative)'
       git for-each-ref --sort=-committerdate refs/remotes/origin \
-        --format=$'%(refname:short)\tremote\t%(committerdate:relative)' |
+        --format=$'%(refname:strip=2)\tremote\t%(committerdate:relative)' |
         awk -F'\t' '$1 != "origin/HEAD"'
     } |
       awk -F'\t' '{
@@ -468,7 +468,7 @@ wtab() {
     printf '%s\n' "$rows" |
       dot_fzf_ui --prompt='worktree branch> ' --delimiter=$'\t' --with-nth=2 \
         --header='branch                         source   last commit' |
-      cut -f1
+      awk -F'\t' '{print $1}'
   )"
   [[ -z "$branch" ]] && return
 
@@ -505,7 +505,7 @@ wtr() {
     printf '%s\n' "$rows" |
       dot_fzf_ui --prompt='worktree remove> ' --delimiter=$'\t' --with-nth=2 \
         --header='m  name             branch               path' |
-      cut -f1
+      awk -F'\t' '{print $1}'
   )"
   [[ -z "$wt_path" ]] && return
 
@@ -548,7 +548,7 @@ wtg() {
     printf '%s\n' "$rows" |
       dot_fzf_ui --prompt='worktree go> ' --delimiter=$'\t' --with-nth=2 \
         --header='m  name             branch               path' |
-      cut -f1
+      awk -F'\t' '{print $1}'
   )"
   [[ -z "$wt_path" ]] && return
 
@@ -567,7 +567,7 @@ wtm() {
   dot_require_fzf || return 1
 
   local main_path main_branch rows wt_path wt_branch
-  main_path="$(dot_wt_rows | sed -n '1p' | cut -f1)"
+  main_path="$(dot_wt_rows | sed -n '1p' | awk -F'\t' '{print $1}')"
   main_branch="$(dot_wt_rows | sed -n '1p' | cut -f4)"
 
   rows="$(dot_wt_pretty_rows | awk -F'\t' '$2 !~ /^\*/')"
@@ -577,7 +577,7 @@ wtm() {
     printf '%s\n' "$rows" |
       dot_fzf_ui --prompt='worktree merge> ' --delimiter=$'\t' --with-nth=2 \
         --header='m  name             branch               path' |
-      cut -f1
+      awk -F'\t' '{print $1}'
   )"
   [[ -z "$wt_path" ]] && return
 
@@ -1071,7 +1071,7 @@ ts() {
     printf '%s\n' "$rows" |
       dot_fzf_ui --prompt='session> ' --delimiter=$'\t' --with-nth=2 \
         --header=$'m  state     session               clients   wins' |
-      cut -f1
+      awk -F'\t' '{print $1}'
   )"
   [[ -z "$target" ]] && return
 
@@ -1097,7 +1097,7 @@ tk() {
         dot_fzf_ui --prompt='kill session> ' --delimiter=$'\t' --with-nth=2 \
           --header=$'m  state     session               clients   wins'
     )"
-    target="$(printf '%s' "$selected" | cut -f1)"
+    target="$(printf '%s' "$selected" | awk -F'\t' '{print $1}')"
   fi
 
   [[ -z "$target" ]] && return
@@ -1118,7 +1118,7 @@ tsw() {
     printf '%s\n' "$rows" |
       dot_fzf_ui --prompt='window> ' --delimiter=$'\t' --with-nth=2 \
         --header=$'m  session         idx window            panes' |
-      cut -f1
+      awk -F'\t' '{print $1}'
   )"
   [[ -z "$target" ]] && return
 
@@ -1335,7 +1335,7 @@ tsp() {
     dot_tmux_pane_pretty_rows |
       dot_fzf_ui --delimiter=$'\t' --with-nth=2 --prompt='pane> ' \
         --header=$'target       window          cmd        cwd' |
-      cut -f1
+      awk -F'\t' '{print $1}'
   )"
   [[ -z "$target" ]] && return
   dot_tmux_goto_pane "$target"
