@@ -61,3 +61,44 @@ palette = 15=#ffffff
 keybind = global:cmd+grave_accent=toggle_quick_terminal
 quick-terminal-position = top
 quick-terminal-animation-duration = 0.1
+
+# ==============================================================================
+# tmux-replacement layer (本機無 tmux 時的功能補齊)
+# SSH 遠端仍建議用 tmux;這層只針對本機 Ghostty session。
+# ==============================================================================
+
+# --- Session 持久化(tmux-continuum 的降級替代) ---
+# 保存 tabs/splits 結構 + cwd,但不保存跑中的 process state。
+window-save-state = always
+
+# --- 肌肉記憶:ctrl+a chord prefix(tmux prefix 風格) ---
+# 會讓 shell 收不到裸 ctrl+a(readline beginning-of-line)。
+# 轉圜:ctrl+a → a 送字面 ctrl+a,等效原 tmux 的 C-a a。
+keybind = ctrl+a>a=text:\x01
+keybind = ctrl+a>c=new_tab
+keybind = ctrl+a>x=close_surface
+keybind = ctrl+a>percent=new_split:right
+keybind = ctrl+a>quote=new_split:down
+keybind = ctrl+a>h=goto_split:left
+keybind = ctrl+a>j=goto_split:bottom
+keybind = ctrl+a>k=goto_split:top
+keybind = ctrl+a>l=goto_split:right
+keybind = ctrl+a>z=toggle_split_zoom
+keybind = ctrl+a>n=next_tab
+keybind = ctrl+a>p=previous_tab
+keybind = ctrl+a>equal=equalize_splits
+
+# --- OSC 133 prompt jump(需 shell-integration = zsh,上面已開) ---
+keybind = cmd+shift+up=jump_to_prompt:-1
+keybind = cmd+shift+down=jump_to_prompt:1
+
+# --- 對應原 tmux prefix+L:lazygit 新 tab ---
+keybind = cmd+shift+g=new_tab,text:lazygit\n
+
+# --- 對應原 tmux prefix+E:scrollback 丟 $EDITOR(nvim) ---
+keybind = cmd+shift+e=write_scrollback_file:open
+
+# --- 對應原 tmux prefix+A/O/G:啟動 Claude/Codex/Gemini ---
+keybind = cmd+shift+j=new_tab,text:aa\n
+keybind = cmd+shift+k=new_tab,text:ao\n
+keybind = cmd+shift+l=new_tab,text:ag\n
