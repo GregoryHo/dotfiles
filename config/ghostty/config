@@ -62,8 +62,9 @@ palette = 15=#ffffff
 window-save-state = always
 
 # --- Quick Terminal (取代 tmux popup:overlay + 跨 toggle 持久 session) ---
-# 拿掉 global: 前綴 → 只在 Ghostty focus 時觸發,但不需 Accessibility 權限。
-# 這正好匹配 tmux popup 的語意:我已經在 terminal 了,叫個 overlay 做事再收回去。
-keybind = cmd+grave_accent=toggle_quick_terminal
+# 觸發鍵選 opt+space:避開注音/拼音 IME 攔截 cmd+` 的問題,也是 iTerm2
+# Hotkey Window 的經典預設。無 global: → 僅 Ghostty focus 時觸發,
+# 不需 Accessibility 權限(IME 同樣放行 opt 組合)。
+keybind = opt+space=toggle_quick_terminal
 quick-terminal-position = top
 quick-terminal-animation-duration = 0.1
