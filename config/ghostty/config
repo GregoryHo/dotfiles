@@ -64,9 +64,9 @@ window-save-state = always
 # --- Quick Terminal (iTerm2 熱鍵式下拉;需 Accessibility 權限) ---
 # 兩鍵設計(Ghostty dedupe 規則不允許同鍵雙 scope):
 # - cmd+`        (global) 從其他 app 叫出
-# - cmd+shift+`  (local)  從 Ghostty 焦點下叫出(像 tmux popup)
+# - ctrl+cmd+`   (local)  從 Ghostty 焦點下叫出(像 tmux popup)
 keybind = global:cmd+grave_accent=toggle_quick_terminal
-keybind = cmd+shift+grave_accent=toggle_quick_terminal
+keybind = ctrl+cmd+grave_accent=toggle_quick_terminal
 quick-terminal-position = center
 quick-terminal-autohide = true
 quick-terminal-animation-duration = 0.1
