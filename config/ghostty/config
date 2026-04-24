@@ -67,8 +67,7 @@ window-save-state = always
 # - ctrl+cmd+`   (local)  從 Ghostty 焦點下叫出(像 tmux popup)
 keybind = global:cmd+grave_accent=toggle_quick_terminal
 keybind = ctrl+cmd+grave_accent=toggle_quick_terminal
-quick-terminal-position = top
-quick-terminal-size = 50%,75%
+quick-terminal-position = center
 quick-terminal-screen = mouse
 quick-terminal-autohide = true
 quick-terminal-animation-duration = 0.1
