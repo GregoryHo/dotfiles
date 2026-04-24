@@ -1,0 +1,73 @@
+# Ghostty configuration
+# Parity target: alacritty.toml (同一套字體 + 配色 + 行為,便於 A/B 切換)
+
+# --- Font ---
+font-family = JetBrainsMono Nerd Font Mono
+font-style = Medium
+font-style-bold = Bold
+font-style-italic = Italic
+font-style-bold-italic = Bold Italic
+font-size = 15
+font-thicken = true
+
+# --- Window ---
+window-padding-x = 10
+window-padding-y = 10
+background-opacity = 1.0
+macos-titlebar-style = tabs
+macos-option-as-alt = true
+
+# --- Cursor ---
+cursor-style = block
+cursor-style-blink = false
+
+# --- Scrollback (bytes; 字元數 ~20000 行相當於 ~20MB 上限) ---
+scrollback-limit = 20000000
+
+# --- Mouse ---
+mouse-hide-while-typing = true
+
+# --- Shell integration (Alacritty 沒有的好料) ---
+shell-integration = zsh
+shell-integration-features = cursor,sudo,title
+
+# --- Primary colors (對應 alacritty colors.primary / cursor / selection) ---
+background = 312931
+foreground = b9b5b8
+cursor-color = b9b5b8
+cursor-text = 312931
+selection-background = 5a4f5a
+selection-foreground = b9b5b8
+
+# --- 16-color palette (0-7 normal, 8-15 bright) ---
+palette = 0=#312931
+palette = 1=#dd464c
+palette = 2=#8fc13e
+palette = 3=#fdcc58
+palette = 4=#1290bf
+palette = 5=#c85e7c
+palette = 6=#149b93
+palette = 7=#b9b5b8
+palette = 8=#797379
+palette = 9=#dd464c
+palette = 10=#8fc13e
+palette = 11=#fdcc58
+palette = 12=#1290bf
+palette = 13=#c85e7c
+palette = 14=#149b93
+palette = 15=#ffffff
+
+# --- Session 持久化 ---
+# 保存 tabs/splits 結構 + cwd(不保存跑中的 process state)。
+window-save-state = always
+
+# --- Quick Terminal (iTerm2 熱鍵式下拉;需 Accessibility 權限) ---
+# 兩鍵設計(Ghostty dedupe 規則不允許同鍵雙 scope):
+# - cmd+`        (global) 從其他 app 叫出
+# - ctrl+cmd+`   (local)  從 Ghostty 焦點下叫出(像 tmux popup)
+keybind = global:cmd+grave_accent=toggle_quick_terminal
+keybind = ctrl+cmd+grave_accent=toggle_quick_terminal
+quick-terminal-position = center
+quick-terminal-screen = mouse
+quick-terminal-autohide = true
+quick-terminal-animation-duration = 0.1
