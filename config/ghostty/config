@@ -71,3 +71,20 @@ quick-terminal-position = center
 quick-terminal-screen = mouse
 quick-terminal-autohide = true
 quick-terminal-animation-duration = 0.1
+
+# --- Clipboard 安全 ---
+# read = ask: 程式想讀剪貼簿要先問(防止惡意 escape sequence 偷資料)
+# paste-protection: 偵測含換行的可疑貼上,先問再送出
+clipboard-read = ask
+clipboard-paste-protection = true
+clipboard-trim-trailing-spaces = true
+
+# --- Window/Tab 繼承 ---
+window-inherit-working-directory = true
+window-inherit-font-size = true
+
+# --- UX ---
+resize-overlay = never              # 拖曳調整視窗時不顯示 size overlay
+unfocused-split-opacity = 0.85      # 失焦的 split 變淡
+link-url = true                     # cmd+click 開啟 URL
+confirm-close-surface = false       # cmd+W 不再跳確認

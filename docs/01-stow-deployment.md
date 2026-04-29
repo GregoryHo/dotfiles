@@ -31,6 +31,8 @@ dotfiles/                        $HOME
 │   ├── .bash_profile   ─────────┼──▶  ~/.bash_profile
 │   └── .bashrc         ─────────┼──▶  ~/.bashrc
 ├── config/                      │
+│   ├── alacritty/      ─────────┼──▶  ~/.config/alacritty/
+│   ├── ghostty/        ─────────┼──▶  ~/.config/ghostty/
 │   ├── lazygit/        ─────────┼──▶  ~/.config/lazygit/
 │   ├── tmux-powerline/ ─────────┼──▶  ~/.config/tmux-powerline/
 │   ├── karabiner/      ─────────┼──▶  ~/.config/karabiner/
