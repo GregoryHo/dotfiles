@@ -84,11 +84,13 @@ GitHub identity is tracked in `git/.gitconfig-github` (public info, safe to comm
 
 ## Config Directory (`config/`)
 
-XDG-style configs in `~/.config/`. Lazygit and tmux-powerline are directory symlinks; karabiner is deployed separately.
+XDG-style configs in `~/.config/`. Alacritty, Lazygit, tmux-powerline, and Ghostty are directory symlinks; karabiner is deployed separately.
 
 | Tool            | Path                        | Notes                                    |
 |-----------------|-----------------------------|------------------------------------------|
+| Alacritty       | `config/alacritty/`         | `alacritty.toml`. Parity peer to Ghostty — checked by `shell/test-terminal-parity.sh` |
 | Lazygit         | `config/lazygit/`           | Tokyonight Storm theme, safety defaults; `state.yml` gitignored |
+| Ghostty         | `config/ghostty/`           | Parity target: matches `config/alacritty/alacritty.toml` font/colors. `TERM=xterm-ghostty` — SSH to older hosts needs `infocmp -x xterm-ghostty \| ssh host 'tic -x -'`. Run `shell/test-terminal-parity.sh` after changes |
 | Karabiner       | `config/karabiner/`         | macOS keyboard remapping rules           |
 | tmux-powerline  | `config/tmux-powerline/`    | Custom theme + segment config (see Tmux) |
 | Neofetch        | `config/neofetch/`          | Custom ASCII art + display config        |

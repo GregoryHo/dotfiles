@@ -1,0 +1,90 @@
+# Alacritty Configuration
+# 從 iTerm2 設定轉換而來
+
+[env]
+TERM = "xterm-256color"
+
+[window]
+padding = { x = 10, y = 10 }
+decorations = "Buttonless"
+opacity = 1.0
+blur = false
+option_as_alt = "Both"
+
+[scrolling]
+history = 20000
+multiplier = 3
+
+[font]
+size = 15.0
+
+[font.normal]
+family = "JetBrainsMono Nerd Font Mono"
+style = "Medium"
+
+[font.bold]
+family = "JetBrainsMono Nerd Font Mono"
+style = "Bold"
+
+[font.italic]
+family = "JetBrainsMono Nerd Font Mono"
+style = "Italic"
+
+[font.bold_italic]
+family = "JetBrainsMono Nerd Font Mono"
+style = "Bold Italic"
+
+[cursor]
+style = { shape = "Block", blinking = "Off" }
+unfocused_hollow = true   # 失焦時 cursor 變空心,跟 Ghostty 行為對齊
+
+[selection]
+save_to_clipboard = true  # 選取自動進系統剪貼簿
+
+[mouse]
+hide_when_typing = true
+
+# Colors (從 iTerm2 匯出)
+[colors.primary]
+background = "#312931"
+foreground = "#b9b5b8"
+
+[colors.cursor]
+cursor = "#b9b5b8"
+text = "#312931"
+
+[colors.selection]
+background = "#5a4f5a"
+text = "#b9b5b8"
+
+# Normal colors (0-7)
+[colors.normal]
+black   = "#312931"
+red     = "#dd464c"
+green   = "#8fc13e"
+yellow  = "#fdcc58"
+blue    = "#1290bf"
+magenta = "#c85e7c"
+cyan    = "#149b93"
+white   = "#b9b5b8"
+
+# Bright colors (8-15)
+[colors.bright]
+black   = "#797379"
+red     = "#dd464c"
+green   = "#8fc13e"
+yellow  = "#fdcc58"
+blue    = "#1290bf"
+magenta = "#c85e7c"
+cyan    = "#149b93"
+white   = "#ffffff"
+
+# URL Hints - 點擊 URL 開啟瀏覽器
+[[hints.enabled]]
+command = "open"  # macOS 使用 open
+hyperlinks = true
+post_processing = true
+persist = false
+mouse.enabled = true  # 預設 Shift + 點擊開啟 URL
+binding = { key = "O", mods = "Command|Shift" }  # 或用 Cmd+Shift+O 快捷鍵
+regex = "(ipfs:|ipns:|magnet:|mailto:|gemini://|gopher://|https://|http://|news:|file:|git://|ssh:|ftp://)[^\\u0000-\\u001F\\u007F-\\u009F<>\"\\s{-}\\^⟨⟩`]+"
