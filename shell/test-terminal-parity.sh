@@ -80,6 +80,11 @@ ghostty_palette() {
 FAILED=0
 check() {
   local label="$1" a="$2" b="$3"
+  if [[ -z "$a" || -z "$b" ]]; then
+    printf '  [MISS] %-22s alacritty=%q  ghostty=%q\n' "$label" "$a" "$b" >&2
+    FAILED=1
+    return
+  fi
   if [[ "$a" == "$b" ]]; then
     printf '  [OK]   %-22s %s\n' "$label" "$a"
   else
