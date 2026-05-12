@@ -2,9 +2,7 @@
 alias vim='nvim'
 alias vi='nvim'
 alias mvim='nvim'
-export EDITOR='nvim'
-export VISUAL='nvim'
-export GIT_EDITOR='nvim'
+# EDITOR/VISUAL/GIT_EDITOR live in shell/.env.shared.sh (shared by zsh + bash)
 alias rm='echo "Foce add option -i. (**Warning** addtional -f will override this)";rm -i'
 # alias python=~/.pyenv/versions/2.7.18/bin/python  # Commented for ARM migration
 

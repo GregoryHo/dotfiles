@@ -370,6 +370,9 @@ export FZF_ALT_C_OPTS="--preview 'tree -C {} | head -200'"
 # Load local source
 [ -f ~/.zshrc.local ] && source ~/.zshrc.local
 
+# Ghostty-specific layer (terminal-specific, machine-agnostic; gated by $TERM internally)
+[ -f "$HOME/GitHub/dotfiles/zsh/ghostty.zsh" ] && . "$HOME/GitHub/dotfiles/zsh/ghostty.zsh"
+
 # Keep startup lean. Run fastfetch manually when needed.
 alias ff='fastfetch'
 eval "$(rbenv init - zsh)"
