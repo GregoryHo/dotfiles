@@ -22,7 +22,9 @@ if [[ ! -f "$GHOSTTY_CONFIG" ]]; then
 fi
 
 normalize_hex() {
-  printf '%s' "$1" | tr -d '"#' | tr '[:upper:]' '[:lower:]'
+  # Strip surrounding quotes, leading "#" and "0x" prefix (Alacritty accepts both),
+  # then lowercase. Result is a bare 6-char hex string.
+  printf '%s' "$1" | sed -E 's/^0x//; s/[#"]//g' | tr '[:upper:]' '[:lower:]'
 }
 
 normalize_num() {
@@ -30,6 +32,8 @@ normalize_num() {
 }
 
 # Extract `key = value` from a specific [section] in alacritty's TOML.
+# Strips inline `# ...` comments after the quoted value (heuristic: any
+# whitespace+# sequence after quote removal is treated as a trailing comment).
 alac_get() {
   local file="$1" section="$2" key="$3"
   awk -v section="[$section]" -v key="$key" '
@@ -37,6 +41,7 @@ alac_get() {
     in_section && $1 == key {
       sub(/^[^=]*=[[:space:]]*/, "")
       gsub(/"/, "")
+      sub(/[[:space:]]+#.*$/, "")
       gsub(/^[[:space:]]+|[[:space:]]+$/, "")
       print
       exit
@@ -44,7 +49,8 @@ alac_get() {
   ' "$file"
 }
 
-# Extract `key = value` from Ghostty ini-like config (skips `# ...` comment lines).
+# Extract `key = value` from Ghostty ini-like config (skips `# ...` comment lines
+# and trailing inline `# ...` comments after the value).
 ghostty_get() {
   local file="$1" key="$2"
   awk -v key="$key" '
@@ -52,6 +58,7 @@ ghostty_get() {
     {
       if (match($0, "^[[:space:]]*" key "[[:space:]]*=[[:space:]]*")) {
         val = substr($0, RLENGTH + 1)
+        sub(/[[:space:]]+#.*$/, "", val)
         gsub(/^[[:space:]]+|[[:space:]]+$/, "", val)
         gsub(/"/, "", val)
         print val
@@ -61,7 +68,8 @@ ghostty_get() {
   ' "$file"
 }
 
-# Extract palette[N] from Ghostty `palette = N=#HEX` lines.
+# Extract palette[N] from Ghostty `palette = N=#HEX` lines. Strips trailing
+# inline `# ...` comments before squashing the leading `#` from the hex literal.
 ghostty_palette() {
   local file="$1" idx="$2"
   awk -v idx="$idx" '
@@ -69,6 +77,7 @@ ghostty_palette() {
     {
       if (match($0, "^[[:space:]]*palette[[:space:]]*=[[:space:]]*" idx "[[:space:]]*=[[:space:]]*")) {
         val = substr($0, RLENGTH + 1)
+        sub(/[[:space:]]+#.*$/, "", val)
         gsub(/[[:space:]#]/, "", val)
         print tolower(val)
         exit
