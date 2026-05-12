@@ -84,7 +84,11 @@ window-inherit-working-directory = true
 window-inherit-font-size = true
 
 # --- UX ---
-resize-overlay = never              # 拖曳調整視窗時不顯示 size overlay
-unfocused-split-opacity = 0.85      # 失焦的 split 變淡
-link-url = true                     # cmd+click 開啟 URL
-confirm-close-surface = false       # cmd+W 不再跳確認
+# 拖曳調整視窗時不顯示 size overlay
+resize-overlay = never
+# 失焦的 split 變淡
+unfocused-split-opacity = 0.85
+# cmd+click 開啟 URL
+link-url = true
+# cmd+W 不再跳確認
+confirm-close-surface = false
