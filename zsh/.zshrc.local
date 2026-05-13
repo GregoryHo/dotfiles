@@ -966,6 +966,7 @@ dot_agent_pane_rows() {
       if (length(session) > 12) session = substr(session, 1, 9) "..."
 
       p = (projpath != "" ? projpath : cwd)
+      sub(/\/$/, "", p)
       n = split(p, parts, "/")
       project = (n > 0 ? parts[n] : p)
       if (length(project) > 20) project = substr(project, 1, 17) "..."
@@ -1003,8 +1004,10 @@ dot_agent_pane_rows() {
 
 dot_agent_pane_format_rows() {
   local mode="${1:-full}"
+  local pending_target="${2:-}"
   local c_claude=$'\033[35m' c_codex=$'\033[32m' c_gemini=$'\033[34m'
   local c_working=$'\033[32m' c_waiting=$'\033[33m'
+  local c_warn=$'\033[1;31m'
   local c_reset=$'\033[0m'
 
   dot_agent_pane_rows |
@@ -1019,16 +1022,32 @@ dot_agent_pane_format_rows() {
         working) c_st="$c_working" icon="●" ;;
         waiting) c_st="$c_waiting" icon="○" ;;
       esac
+      local is_pending=0
+      [[ -n "$pending_target" && "$target" == "$pending_target" ]] && is_pending=1
       if [[ "$mode" == "compact" ]]; then
-        printf '%s\t%s%s%s %s%-7s%s %-20s %-16s %s%-7s%s\n' \
-          "$target" "$c_st" "$icon" "$c_reset" \
-          "$c_agent" "$agent" "$c_reset" "$project" "$task" \
-          "$c_st" "$astate" "$c_reset"
+        if (( is_pending )); then
+          printf '%s\t%s%s%s %s%-7s%s %-20s %-16s %sctrl-x again to delete%s\n' \
+            "$target" "$c_st" "$icon" "$c_reset" \
+            "$c_agent" "$agent" "$c_reset" "$project" "$task" \
+            "$c_warn" "$c_reset"
+        else
+          printf '%s\t%s%s%s %s%-7s%s %-20s %-16s %s%-7s%s\n' \
+            "$target" "$c_st" "$icon" "$c_reset" \
+            "$c_agent" "$agent" "$c_reset" "$project" "$task" \
+            "$c_st" "$astate" "$c_reset"
+        fi
       else
-        printf '%s\t%s%s%s %s%-7s%s %-12s %-20s %-20s %-16s %s%-7s%s %5s %5s  %s\n' \
-          "$target" "$c_st" "$icon" "$c_reset" \
-          "$c_agent" "$agent" "$c_reset" "$session" "$project" "$branch" "$task" \
-          "$c_st" "$astate" "$c_reset" "$idle" "$duration" "$cwd"
+        if (( is_pending )); then
+          printf '%s\t%s%s%s %s%-7s%s %-12s %-20s %-20s %-16s %sctrl-x again to delete%s %5s %5s  %s\n' \
+            "$target" "$c_st" "$icon" "$c_reset" \
+            "$c_agent" "$agent" "$c_reset" "$session" "$project" "$branch" "$task" \
+            "$c_warn" "$c_reset" "$idle" "$duration" "$cwd"
+        else
+          printf '%s\t%s%s%s %s%-7s%s %-12s %-20s %-20s %-16s %s%-7s%s %5s %5s  %s\n' \
+            "$target" "$c_st" "$icon" "$c_reset" \
+            "$c_agent" "$agent" "$c_reset" "$session" "$project" "$branch" "$task" \
+            "$c_st" "$astate" "$c_reset" "$idle" "$duration" "$cwd"
+        fi
       fi
     done
 }
@@ -1049,15 +1068,14 @@ tl() {
 
 tx() {
   local name="${1:-$(basename "$PWD")}"
+  if ! dot_tmux_cmd has-session -t "$name" 2>/dev/null; then
+    dot_tmux_cmd new-session -ds "$name" -n main -c "$PWD"
+    dot_tmux_cmd set-option -w -t "$name" @project_path "$PWD"
+  fi
   if [[ -n "$TMUX" ]]; then
-    if dot_tmux_cmd has-session -t "$name" 2>/dev/null; then
-      dot_tmux_cmd switch-client -t "$name"
-    else
-      dot_tmux_cmd new-session -d -s "$name" -c "$PWD"
-      dot_tmux_cmd switch-client -t "$name"
-    fi
+    dot_tmux_cmd switch-client -t "$name"
   else
-    dot_tmux_cmd new-session -A -s "$name" -c "$PWD"
+    dot_tmux_cmd attach-session -t "$name"
   fi
 }
 
@@ -1274,6 +1292,12 @@ tw() {
   fi
   dot_tmux_window_exists "$name" "logs" || dot_tmux_cmd new-window -d -t "$name" -n logs -c "$root"
 
+  local _tw_win
+  for _tw_win in editor agent-claude test logs; do
+    dot_tmux_window_exists "$name" "$_tw_win" && \
+      dot_tmux_cmd set-option -w -t "$name:$_tw_win" @project_path "$root"
+  done
+
   dot_tmux_bootstrap_window_layout "$name" "$root"
 
   panes="$(dot_tmux_window_pane_count "${name}:editor")"
@@ -1345,6 +1369,71 @@ tsp() {
   dot_tmux_goto_pane "$target"
 }
 
+dot_tsa_revert_watch() {
+  # Polls the delete-pending state file. When the state expires (> 2s old)
+  # without a confirming second ctrl-x, deletes the state and tells fzf
+  # to reload, which re-renders the row with normal status color.
+  # Health-checks the fzf port every ~5s to self-terminate after popup close.
+  local port="$1"
+  local reload_action="$2"
+  local iter=0
+  while sleep 0.5; do
+    iter=$((iter + 1))
+    if (( iter % 10 == 0 )); then
+      curl -sf "http://127.0.0.1:$port" -o /dev/null --max-time 0.3 2>/dev/null || break
+    fi
+    [[ -f /tmp/tsa-delete-pending ]] || continue
+    local stamp
+    IFS=$'\t' read -r stamp _ < /tmp/tsa-delete-pending 2>/dev/null
+    [[ -n "$stamp" ]] || continue
+    (( $(date +%s) - stamp > 2 )) || continue
+    rm -f /tmp/tsa-delete-pending
+    curl -sf -XPOST "http://127.0.0.1:$port" --data-raw "$reload_action" --max-time 1 2>/dev/null
+  done
+}
+
+dot_tsa_handle_delete() {
+  # Two-step session-delete confirm. First press writes a state file with
+  # timestamp + target; second press within 2s on the same target executes
+  # the kill. After 2s the state expires and a press just re-arms.
+  local target="$1"
+  local state_file="/tmp/tsa-delete-pending"
+  local now=$(date +%s)
+
+  if [[ -f "$state_file" ]]; then
+    local pending_ts pending_target
+    IFS=$'\t' read -r pending_ts pending_target < "$state_file" 2>/dev/null
+    if (( now - pending_ts <= 2 )) && [[ "$pending_target" == "$target" ]]; then
+      local session="${target%%:*}"
+      tmux kill-session -t "$session" 2>/dev/null
+      rm -f "$state_file"
+      return 0
+    fi
+  fi
+
+  printf '%d\t%s\n' "$now" "$target" > "$state_file"
+  return 1
+}
+
+dot_tsa_picker_rows() {
+  # Read delete-pending state and let the formatter swap the status column
+  # of the matching row to a red warning. State file expires after 2s.
+  local state_file="/tmp/tsa-delete-pending"
+  local pending_target=""
+
+  if [[ -f "$state_file" ]]; then
+    local pending_ts pt
+    IFS=$'\t' read -r pending_ts pt < "$state_file" 2>/dev/null
+    if (( $(date +%s) - pending_ts <= 2 )); then
+      pending_target="$pt"
+    else
+      rm -f "$state_file"
+    fi
+  fi
+
+  dot_agent_pane_format_rows compact "$pending_target"
+}
+
 dot_agent_session_init() {
   local name="$1" agent="$2" dir="$3"
   local branch task
@@ -1388,6 +1477,7 @@ dot_tmux_new_session_flow() {
     dir="${match:-$query}"
     dir="${dir/#\~/$HOME}"
     [[ "$dir" != /* ]] && dir="$HOME/$dir"
+    dir="${dir%/}"
     if [[ ! -d "$dir" ]]; then
       echo "Not a directory: $dir"
       read -sk1 '?Press any key to retry...'
@@ -1417,7 +1507,13 @@ dot_tmux_new_session_flow() {
     return 0
   fi
 
-  tmux new-session -ds "$name" -c "$dir"
+  local win_name
+  case "$agent" in
+    claude|codex|gemini) win_name="agent-$agent" ;;
+    *)                   win_name="main" ;;
+  esac
+
+  tmux new-session -ds "$name" -n "$win_name" -c "$dir"
 
   case "$agent" in
     claude|codex|gemini)
@@ -1431,21 +1527,30 @@ dot_tmux_new_session_flow() {
 tsa() {
   dot_require_fzf || return 1
 
+  # Clear any stale delete-pending state from prior invocation.
+  rm -f /tmp/tsa-delete-pending
+
   while true; do
     local rows raw target key
-    local reload_cmd='source ~/.zshrc.local 2>/dev/null; dot_agent_pane_picker_rows'
-    rows="$(dot_agent_pane_picker_rows)"
+    local reload_cmd='source ~/.zshrc.local 2>/dev/null; dot_tsa_picker_rows'
+    rows="$(dot_tsa_picker_rows)"
 
     local col_hdr
     col_hdr="$(printf '  %-7s %-20s %-16s %s' type project task status)"
 
+    local del_handler="$SHELL -c 'source ~/.zshrc.local 2>/dev/null; dot_tsa_handle_delete \"{1}\"'"
+    local watch_starter="$SHELL -c 'source ~/.zshrc.local 2>/dev/null; dot_tsa_revert_watch \"\$FZF_PORT\" \"reload-sync(${reload_cmd})\" & disown'"
+
     raw="$(
       { [[ -n "$rows" ]] && printf '%s\n' "$rows"; } |
         dot_fzf_ui --height=100% --ansi --prompt='agent> ' --delimiter=$'\t' --with-nth=2 --accept-nth=1 \
-          --border-label=' enter=goto  ctrl-n=new agent workspace  ctrl-r=refresh ' \
+          --border-label=' enter=goto  ctrl-n=new workspace  ctrl-x=delete session  ctrl-r=refresh ' \
           --header="$col_hdr" \
           --expect=ctrl-n \
+          --listen 127.0.0.1:0 \
+          --bind "start:execute-silent{$watch_starter}" \
           --bind "ctrl-r:reload-sync($reload_cmd)" \
+          --bind "ctrl-x:execute-silent{$del_handler}+reload-sync{$reload_cmd}" \
           --bind 'esc:abort'
     )"
     [[ -z "$raw" ]] && return

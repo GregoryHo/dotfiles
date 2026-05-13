@@ -18,19 +18,19 @@ see the technique docs (`01-*.md` through `13-*.md`).
 | Name | Command | Behavior | Definition |
 |------|---------|----------|------------|
 | `tl` | `tl` | List all tmux sessions in a table (marker, state, name, clients, wins) | `zsh/.zshrc.local:1033` |
-| `tx` | `tx [name]` | Create new session or switch to existing. Default name = `basename $PWD` | `zsh/.zshrc.local:1044` |
+| `tx` | `tx [name]` | Create new session or switch to existing. Default session name = `basename $PWD`; default window name = `main`. On create, sets `@project_path = $PWD` for consistent agent-launch context | `zsh/.zshrc.local:1044` |
 | `ts` | `ts` | fzf picker for switching to another session | `zsh/.zshrc.local:1058` |
 | `tk` | `tk [name]` | Kill session (fzf picker if no arg) | `zsh/.zshrc.local:1083` |
 | `tsw` | `tsw` | fzf picker for switching window across all sessions | `zsh/.zshrc.local:1105` |
 | `tsp` | `tsp` | fzf picker for switching pane across all sessions | `zsh/.zshrc.local:1329` |
-| `tw` | `tw [name]` | Expand current session into multi-window workspace: editor / agent / test / logs | `zsh/.zshrc.local:1241` |
+| `tw` | `tw [name]` | Expand current session into multi-window workspace: editor / agent-claude / test / logs. Sets `@project_path = $root` on every window (idempotent on re-run) | `zsh/.zshrc.local:1241` |
 
 ## Tmux — AI agent management
 
 | Name | Command | Behavior | Definition |
 |------|---------|----------|------------|
 | `tla` | `tla` | List all running AI agents (table) | `zsh/.zshrc.local:1536` |
-| `tsa` | `tsa` | Agent workspace popup: list active agents + `ctrl-n` to spawn new tmux session + agent (dir picker → agent picker) | `zsh/.zshrc.local:1425` |
+| `tsa` | `tsa` | Agent workspace popup. Bindings: `enter`=goto pane · `ctrl-n`=spawn new tmux session + agent (dir picker → agent picker, window named `agent-<type>` or `main`) · `ctrl-x`=delete session (two-step, second press within 2s) · `ctrl-r`=refresh | `zsh/.zshrc.local:1471` |
 | `tda` | `tda` | Full agent dashboard with live pane preview | `zsh/.zshrc.local:1463` |
 | `tma` | `tma` | Agent monitor: auto-refresh 5s, `alt-s` send, `ctrl-x` stop, `alt-k` kill | `zsh/.zshrc.local:1504` |
 | `tat` | `tat <description>` | Set task description on current pane's agent | `zsh/.zshrc.local:679` |
