@@ -4,6 +4,16 @@
 #   DOT_PROJECT_ROOTS=("$HOME/GitHub" "$HOME/Workspace")
 [ -f "$HOME/.zsh-machine.sh" ] && source "$HOME/.zsh-machine.sh"
 
+# $EPOCHSECONDS — fork-free unix timestamp for hot loops (tsa watcher, agent rows)
+zmodload -F zsh/datetime +b:EPOCHSECONDS 2>/dev/null
+
+# tsa delete-confirm state
+DOT_TSA_PENDING_FILE="${TMPDIR:-/tmp}/tsa-delete-pending"
+DOT_TSA_CONFIRM_SECS=2
+
+# Branch-name prefixes that get stripped to produce the agent task label
+DOT_BRANCH_PREFIXES=(feature/ bugfix/ hotfix/ fix/ chore/ release/ refactor/)
+
 # Aliases
 alias vim='nvim'
 alias vi='nvim'
@@ -666,19 +676,29 @@ dot_notify_agent() {
   osascript -e "display notification \"${msg}\" with title \"Agent Complete\" sound name \"Glass\"" 2>/dev/null
 }
 
+dot_agent_meta_set() {
+  # Tag a tmux window with the agent metadata that dot_agent_pane_rows reads.
+  # target="" → current window; otherwise a "session" or "session:win" spec.
+  local target="$1" agent="$2" dir="$3"
+  local branch="" task="" prefix=""
+  branch="$(cd "$dir" && git branch --show-current 2>/dev/null)" || true
+  task="${branch:--}"
+  for prefix in "${DOT_BRANCH_PREFIXES[@]}"; do
+    task="${task#$prefix}"
+  done
+  local t=()
+  [[ -n "$target" ]] && t=(-t "$target")
+  tmux set-option -w "${t[@]}" @project_path "$dir" \; \
+       set-option -w "${t[@]}" @agent_type "$agent" \; \
+       set-option -w "${t[@]}" @agent_started_at "$EPOCHSECONDS" \; \
+       set-option -w "${t[@]}" @agent_branch "${branch:--}" \; \
+       set-option -w "${t[@]}" @agent_task "$task"
+}
+
 dot_agent_window() {
   local agent="$1" cmd="$2" dir="$3"
   tmux new-window -n "agent-$agent" -c "$dir"
-  local branch
-  branch="$(cd "$dir" && git branch --show-current 2>/dev/null)" || true
-  local task="${branch:--}"
-  task="${task#feature/}"; task="${task#bugfix/}"; task="${task#hotfix/}"
-  task="${task#fix/}"; task="${task#chore/}"; task="${task#release/}"; task="${task#refactor/}"
-  tmux set-option -w @project_path "$dir" \; \
-       set-option -w @agent_type "$agent" \; \
-       set-option -w @agent_started_at "$(date +%s)" \; \
-       set-option -w @agent_branch "${branch:--}" \; \
-       set-option -w @agent_task "$task"
+  dot_agent_meta_set "" "$agent" "$dir"
   tmux send-keys "$cmd; dot_notify_agent $agent \"$dir\"" C-m
 }
 
@@ -864,11 +884,14 @@ dot_tmux_cmd() {
   command tmux "$@"
 }
 
+dot_tmux_current_session() {
+  [[ -n "$TMUX" ]] || return 1
+  dot_tmux_cmd display-message -p '#S' 2>/dev/null
+}
+
 dot_tmux_session_rows() {
   local current=""
-  if [[ -n "$TMUX" ]]; then
-    current="$(dot_tmux_cmd display-message -p '#S' 2>/dev/null)"
-  fi
+  current="$(dot_tmux_current_session)"
 
   dot_tmux_cmd list-sessions -F $'#{session_name}\t#{session_attached}\t#{session_windows}' 2>/dev/null |
     while IFS=$'\t' read -r name attached windows; do
@@ -915,8 +938,7 @@ dot_tmux_window_pretty_rows() {
 }
 
 dot_agent_pane_rows() {
-  local now
-  now="$(date +%s)"
+  local now=$EPOCHSECONDS
 
   # Build pane_pid → agent map from process tree (single ps call)
   local agent_map
@@ -1022,32 +1044,26 @@ dot_agent_pane_format_rows() {
         working) c_st="$c_working" icon="●" ;;
         waiting) c_st="$c_waiting" icon="○" ;;
       esac
-      local is_pending=0
-      [[ -n "$pending_target" && "$target" == "$pending_target" ]] && is_pending=1
-      if [[ "$mode" == "compact" ]]; then
-        if (( is_pending )); then
-          printf '%s\t%s%s%s %s%-7s%s %-20s %-16s %sctrl-x again to delete%s\n' \
-            "$target" "$c_st" "$icon" "$c_reset" \
-            "$c_agent" "$agent" "$c_reset" "$project" "$task" \
-            "$c_warn" "$c_reset"
-        else
-          printf '%s\t%s%s%s %s%-7s%s %-20s %-16s %s%-7s%s\n' \
-            "$target" "$c_st" "$icon" "$c_reset" \
-            "$c_agent" "$agent" "$c_reset" "$project" "$task" \
-            "$c_st" "$astate" "$c_reset"
-        fi
+      local st_color="" st_text="" st_fmt=""
+      if [[ -n "$pending_target" && "$target" == "$pending_target" ]]; then
+        st_color="$c_warn"
+        st_text="ctrl-x again to delete"
+        st_fmt='%s%s%s'
       else
-        if (( is_pending )); then
-          printf '%s\t%s%s%s %s%-7s%s %-12s %-20s %-20s %-16s %sctrl-x again to delete%s %5s %5s  %s\n' \
-            "$target" "$c_st" "$icon" "$c_reset" \
-            "$c_agent" "$agent" "$c_reset" "$session" "$project" "$branch" "$task" \
-            "$c_warn" "$c_reset" "$idle" "$duration" "$cwd"
-        else
-          printf '%s\t%s%s%s %s%-7s%s %-12s %-20s %-20s %-16s %s%-7s%s %5s %5s  %s\n' \
-            "$target" "$c_st" "$icon" "$c_reset" \
-            "$c_agent" "$agent" "$c_reset" "$session" "$project" "$branch" "$task" \
-            "$c_st" "$astate" "$c_reset" "$idle" "$duration" "$cwd"
-        fi
+        st_color="$c_st"
+        st_text="$astate"
+        st_fmt='%s%-7s%s'
+      fi
+      if [[ "$mode" == "compact" ]]; then
+        printf "%s\t%s%s%s %s%-7s%s %-20s %-16s ${st_fmt}\n" \
+          "$target" "$c_st" "$icon" "$c_reset" \
+          "$c_agent" "$agent" "$c_reset" "$project" "$task" \
+          "$st_color" "$st_text" "$c_reset"
+      else
+        printf "%s\t%s%s%s %s%-7s%s %-12s %-20s %-20s %-16s ${st_fmt} %5s %5s  %s\n" \
+          "$target" "$c_st" "$icon" "$c_reset" \
+          "$c_agent" "$agent" "$c_reset" "$session" "$project" "$branch" "$task" \
+          "$st_color" "$st_text" "$c_reset" "$idle" "$duration" "$cwd"
       fi
     done
 }
@@ -1270,7 +1286,7 @@ tw() {
   if [[ -n "$1" ]]; then
     name="$1"
   elif [[ -n "$TMUX" ]]; then
-    name="$(dot_tmux_cmd display-message -p '#S')"
+    name="$(dot_tmux_current_session)"
   else
     name="$(basename "$PWD")"
   fi
@@ -1369,83 +1385,73 @@ tsp() {
   dot_tmux_goto_pane "$target"
 }
 
+dot_tsa_pending_read() {
+  # Stdout: pending target if fresh.
+  # Exit:   0 fresh · 1 no state · 2 was stale (cleaned up).
+  [[ -f "$DOT_TSA_PENDING_FILE" ]] || return 1
+  local ts="" target=""
+  IFS=$'\t' read -r ts target < "$DOT_TSA_PENDING_FILE" 2>/dev/null
+  if [[ -z "$ts" ]] || (( EPOCHSECONDS - ts > DOT_TSA_CONFIRM_SECS )); then
+    command rm -f "$DOT_TSA_PENDING_FILE"
+    return 2
+  fi
+  printf '%s\n' "$target"
+  return 0
+}
+
 dot_tsa_revert_watch() {
-  # Polls the delete-pending state file. When the state expires (> 2s old)
-  # without a confirming second ctrl-x, deletes the state and tells fzf
-  # to reload, which re-renders the row with normal status color.
-  # Health-checks the fzf port every ~5s to self-terminate after popup close.
-  local port="$1"
-  local reload_action="$2"
-  local iter=0
+  # Triggers fzf reload when delete-confirm window expires.
+  # Self-terminates when fzf port stops responding (popup closed).
+  local port="$1" reload_action="$2" iter=0
   while sleep 0.5; do
     iter=$((iter + 1))
     if (( iter % 10 == 0 )); then
       curl -sf "http://127.0.0.1:$port" -o /dev/null --max-time 0.3 2>/dev/null || break
     fi
-    [[ -f /tmp/tsa-delete-pending ]] || continue
-    local stamp
-    IFS=$'\t' read -r stamp _ < /tmp/tsa-delete-pending 2>/dev/null
-    [[ -n "$stamp" ]] || continue
-    (( $(date +%s) - stamp > 2 )) || continue
-    rm -f /tmp/tsa-delete-pending
-    curl -sf -XPOST "http://127.0.0.1:$port" --data-raw "$reload_action" --max-time 1 2>/dev/null
+    dot_tsa_pending_read > /dev/null
+    (( $? == 2 )) && \
+      curl -sf -XPOST "http://127.0.0.1:$port" --data-raw "$reload_action" --max-time 1 2>/dev/null
   done
 }
 
-dot_tsa_handle_delete() {
-  # Two-step session-delete confirm. First press writes a state file with
-  # timestamp + target; second press within 2s on the same target executes
-  # the kill. After 2s the state expires and a press just re-arms.
-  local target="$1"
-  local state_file="/tmp/tsa-delete-pending"
-  local now=$(date +%s)
-
-  if [[ -f "$state_file" ]]; then
-    local pending_ts pending_target
-    IFS=$'\t' read -r pending_ts pending_target < "$state_file" 2>/dev/null
-    if (( now - pending_ts <= 2 )) && [[ "$pending_target" == "$target" ]]; then
-      local session="${target%%:*}"
-      tmux kill-session -t "$session" 2>/dev/null
-      rm -f "$state_file"
-      return 0
-    fi
+dot_tsa_kill_session() {
+  # Kill a tmux session. If it's the current session, switch the client to
+  # another session first so any popup invoking us isn't SIGHUPed.
+  local session="$1"
+  if [[ "$session" != "$(dot_tmux_current_session)" ]]; then
+    dot_tmux_cmd kill-session -t "$session" 2>/dev/null
+    return
   fi
+  local next=""
+  next="$(dot_tmux_cmd list-sessions -f "#{!=:#{session_name},$session}" -F '#S' 2>/dev/null | head -1)"
+  if [[ -n "$next" ]]; then
+    dot_tmux_cmd switch-client -t "$next" \; kill-session -t "$session" 2>/dev/null
+  else
+    dot_tmux_cmd kill-session -t "$session" 2>/dev/null
+  fi
+}
 
-  printf '%d\t%s\n' "$now" "$target" > "$state_file"
+dot_tsa_handle_delete() {
+  # Second press on same target within window → kill the session.
+  local target="$1" pending_target=""
+  if pending_target=$(dot_tsa_pending_read) && [[ "$pending_target" == "$target" ]]; then
+    dot_tsa_kill_session "${target%%:*}"
+    command rm -f "$DOT_TSA_PENDING_FILE"
+    return 0
+  fi
+  printf '%d\t%s\n' "$EPOCHSECONDS" "$target" > "$DOT_TSA_PENDING_FILE"
   return 1
 }
 
 dot_tsa_picker_rows() {
-  # Read delete-pending state and let the formatter swap the status column
-  # of the matching row to a red warning. State file expires after 2s.
-  local state_file="/tmp/tsa-delete-pending"
   local pending_target=""
-
-  if [[ -f "$state_file" ]]; then
-    local pending_ts pt
-    IFS=$'\t' read -r pending_ts pt < "$state_file" 2>/dev/null
-    if (( $(date +%s) - pending_ts <= 2 )); then
-      pending_target="$pt"
-    else
-      rm -f "$state_file"
-    fi
-  fi
-
+  pending_target=$(dot_tsa_pending_read) || pending_target=""
   dot_agent_pane_format_rows compact "$pending_target"
 }
 
 dot_agent_session_init() {
   local name="$1" agent="$2" dir="$3"
-  local branch task
-  branch="$(cd "$dir" && git branch --show-current 2>/dev/null)" || true
-  task="${branch:--}"
-  task="${task#feature/}"; task="${task#bugfix/}"; task="${task#hotfix/}"
-  task="${task#fix/}"; task="${task#chore/}"; task="${task#release/}"; task="${task#refactor/}"
-  tmux set-option -w -t "$name" @project_path "$dir"
-  tmux set-option -w -t "$name" @agent_type "$agent"
-  tmux set-option -w -t "$name" @agent_started_at "$(date +%s)"
-  tmux set-option -w -t "$name" @agent_branch "${branch:--}"
-  tmux set-option -w -t "$name" @agent_task "$task"
+  dot_agent_meta_set "$name" "$agent" "$dir"
   tmux send-keys -t "$name" "$agent; dot_notify_agent $agent \"$dir\"" C-m
 }
 
@@ -1527,8 +1533,7 @@ dot_tmux_new_session_flow() {
 tsa() {
   dot_require_fzf || return 1
 
-  # Clear any stale delete-pending state from prior invocation.
-  rm -f /tmp/tsa-delete-pending
+  command rm -f "$DOT_TSA_PENDING_FILE"  # clear stale state from prior invocation
 
   while true; do
     local rows raw target key
