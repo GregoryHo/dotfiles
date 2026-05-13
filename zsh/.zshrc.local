@@ -14,6 +14,9 @@ DOT_TSA_CONFIRM_SECS=2
 # Branch-name prefixes that get stripped to produce the agent task label
 DOT_BRANCH_PREFIXES=(feature/ bugfix/ hotfix/ fix/ chore/ release/ refactor/)
 
+# Project roots scanned by the tsa ctrl-n new-session dir picker
+(( ${+DOT_PROJECT_ROOTS} )) || DOT_PROJECT_ROOTS=("$HOME/GitHub" "$HOME/Workspace")
+
 # Aliases
 alias vim='nvim'
 alias vi='nvim'
@@ -1457,9 +1460,11 @@ dot_agent_session_init() {
 
 dot_tmux_new_session_flow() {
   dot_require_fzf || return 1
-  cd "$HOME" || return 1
 
   local dir name agent default_query=""
+  local -a roots=("${DOT_PROJECT_ROOTS[@]}"(N-/))
+  (( ${#roots[@]} )) || roots=("$HOME")
+  local roots_label="${${(j: :)roots}//$HOME/~}"
 
   while true; do
     # Step 1: pick directory
@@ -1468,12 +1473,12 @@ dot_tmux_new_session_flow() {
       unset FZF_DEFAULT_COMMAND
       dot_fzf_ui \
         --walker=dir \
-        --walker-root="$HOME" \
+        --walker-root "${roots[@]}" \
         --walker-skip=.git,node_modules,Library,.cache,.vim,.tmux,.cocoapods,.gvm,.nvm,.cargo,.rustup,.pub-cache,.android,.gradle,.npm \
         --print-query \
         --query="$default_query" \
-        --prompt='new session cwd (~/)> ' \
-        --border-label=' step 1/2 · type path · enter=next · esc=back '
+        --prompt="new session cwd> " \
+        --border-label=" step 1/2 · roots: $roots_label · enter=next · esc=back "
     )"
     [[ -z "$selected" ]] && return 130
 

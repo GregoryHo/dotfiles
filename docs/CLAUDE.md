@@ -29,7 +29,7 @@ This folder houses two kinds of documentation:
 ```markdown
 | Name | Command | Behavior | Definition |
 |------|---------|----------|------------|
-| `tx` | `tx [name]` | Create new session or switch to existing | `zsh/.zshrc.local:1044` |
+| `tx` | `tx [name]` | Create new session or switch to existing | `zsh/.zshrc.local:1088` |
 ```
 
 - **Name**: function/alias/binding identifier in backticks, no leading `$`
@@ -47,7 +47,7 @@ This folder houses two kinds of documentation:
 ## Sync checklist when modifying `zsh/.zshrc.local`
 
 1. If you added a function whose name might clash with an OMZ plugin alias,
-   add it to the `unalias` line at `zsh/.zshrc.local:647`
+   add it to the `unalias` line at `zsh/.zshrc.local:666`
 2. Run `grep -n "^function_name()" zsh/.zshrc.local` to confirm the new line
 3. Update **Definition** column in `14-command-reference.md`
 4. If removed, also remove from the `unalias` line
@@ -81,7 +81,7 @@ in `.zshrc.local`.
 2. Update line number in `14-command-reference.md` under "Tmux key bindings"
 3. If the popup version (`bind-key <lowercase>`) doesn't yet pass
    `-e DOT_POPUP=1`, add it so the popup skips `load-nvmrc` overhead
-   (see `zsh/.zshrc.local:396`)
+   (see `zsh/.zshrc.local:415`)
 
 ## Drift detection (run when in doubt)
 

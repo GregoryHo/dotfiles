@@ -7,7 +7,7 @@ see the technique docs (`01-*.md` through `13-*.md`).
 **Source locations:**
 - Shell functions / aliases: `zsh/.zshrc.local`
 - Tmux key bindings: `tmux/.tmux.conf.local`
-- Canonical name list (OMZ alias shadow guard): `zsh/.zshrc.local:647`
+- Canonical name list (OMZ alias shadow guard): `zsh/.zshrc.local:666`
 
 > The **Definition** column gives `file:line` for fast jumping. Keep it accurate.
 
@@ -17,31 +17,31 @@ see the technique docs (`01-*.md` through `13-*.md`).
 
 | Name | Command | Behavior | Definition |
 |------|---------|----------|------------|
-| `tl` | `tl` | List all tmux sessions in a table (marker, state, name, clients, wins) | `zsh/.zshrc.local:1033` |
-| `tx` | `tx [name]` | Create new session or switch to existing. Default session name = `basename $PWD`; default window name = `main`. On create, sets `@project_path = $PWD` for consistent agent-launch context | `zsh/.zshrc.local:1044` |
-| `ts` | `ts` | fzf picker for switching to another session | `zsh/.zshrc.local:1058` |
-| `tk` | `tk [name]` | Kill session (fzf picker if no arg) | `zsh/.zshrc.local:1083` |
-| `tsw` | `tsw` | fzf picker for switching window across all sessions | `zsh/.zshrc.local:1105` |
-| `tsp` | `tsp` | fzf picker for switching pane across all sessions | `zsh/.zshrc.local:1329` |
-| `tw` | `tw [name]` | Expand current session into multi-window workspace: editor / agent-claude / test / logs. Sets `@project_path = $root` on every window (idempotent on re-run) | `zsh/.zshrc.local:1241` |
+| `tl` | `tl` | List all tmux sessions in a table (marker, state, name, clients, wins) | `zsh/.zshrc.local:1077` |
+| `tx` | `tx [name]` | Create new session or switch to existing. Default session name = `basename $PWD`; default window name = `main`. On create, sets `@project_path = $PWD` for consistent agent-launch context | `zsh/.zshrc.local:1088` |
+| `ts` | `ts` | fzf picker for switching to another session | `zsh/.zshrc.local:1101` |
+| `tk` | `tk [name]` | Kill session (fzf picker if no arg) | `zsh/.zshrc.local:1126` |
+| `tsw` | `tsw` | fzf picker for switching window across all sessions | `zsh/.zshrc.local:1148` |
+| `tsp` | `tsp` | fzf picker for switching pane across all sessions | `zsh/.zshrc.local:1378` |
+| `tw` | `tw [name]` | Expand current session into multi-window workspace: editor / agent-claude / test / logs. Sets `@project_path = $root` on every window (idempotent on re-run) | `zsh/.zshrc.local:1284` |
 
 ## Tmux — AI agent management
 
 | Name | Command | Behavior | Definition |
 |------|---------|----------|------------|
-| `tla` | `tla` | List all running AI agents (table) | `zsh/.zshrc.local:1536` |
-| `tsa` | `tsa` | Agent workspace popup. Bindings: `enter`=goto pane · `ctrl-n`=spawn new tmux session + agent (dir picker → agent picker, window named `agent-<type>` or `main`) · `ctrl-x`=delete session (two-step, second press within 2s) · `ctrl-r`=refresh | `zsh/.zshrc.local:1471` |
-| `tda` | `tda` | Full agent dashboard with live pane preview | `zsh/.zshrc.local:1463` |
-| `tma` | `tma` | Agent monitor: auto-refresh 5s, `alt-s` send, `ctrl-x` stop, `alt-k` kill | `zsh/.zshrc.local:1504` |
-| `tat` | `tat <description>` | Set task description on current pane's agent | `zsh/.zshrc.local:679` |
+| `tla` | `tla` | List all running AI agents (table) | `zsh/.zshrc.local:1657` |
+| `tsa` | `tsa` | Agent workspace popup. Bindings: `enter`=goto pane · `ctrl-n`=spawn new tmux session + agent (dir picker → agent picker, window named `agent-<type>` or `main`) · `ctrl-x`=delete session (two-step, second press within 2s) · `ctrl-r`=refresh. Dir picker scans roots from `$DOT_PROJECT_ROOTS` (default: `~/GitHub ~/Workspace`) | `zsh/.zshrc.local:1538` |
+| `tda` | `tda` | Full agent dashboard with live pane preview | `zsh/.zshrc.local:1584` |
+| `tma` | `tma` | Agent monitor: auto-refresh 5s, `alt-s` send, `ctrl-x` stop, `alt-k` kill | `zsh/.zshrc.local:1625` |
+| `tat` | `tat <description>` | Set task description on current pane's agent | `zsh/.zshrc.local:708` |
 
 ## AI agent — CLI continue variants
 
 | Name | Command | Behavior | Definition |
 |------|---------|----------|------------|
-| `aac` | `aac [args]` | `claude -c` — continue most recent Claude session | `zsh/.zshrc.local:623` |
-| `aoc` | `aoc [args]` | Codex continue (resume last session) | `zsh/.zshrc.local:624` |
-| `agc` | `agc [args]` | Gemini continue | `zsh/.zshrc.local:631` |
+| `aac` | `aac [args]` | `claude -c` — continue most recent Claude session | `zsh/.zshrc.local:642` |
+| `aoc` | `aoc [args]` | Codex continue (resume last session) | `zsh/.zshrc.local:643` |
+| `agc` | `agc [args]` | Gemini continue | `zsh/.zshrc.local:650` |
 
 > Non-continue (fresh) agent launches happen via tmux bindings `prefix+A/O/G`, not via standalone shell functions.
 
@@ -67,52 +67,61 @@ see the technique docs (`01-*.md` through `13-*.md`).
 
 | Name | Command | Behavior | Definition |
 |------|---------|----------|------------|
-| `wtl` | `wtl` | List worktrees (alias of `git worktree list`) | `zsh/.zshrc.local:431` |
-| `wta` | `wta <branch>` | Add worktree at sibling `<repo>-worktrees/<branch>` | `zsh/.zshrc.local:435` |
-| `wtab` | `wtab` | Add worktree from fzf branch picker | `zsh/.zshrc.local:446` |
-| `wtr` | `wtr [name]` | Remove worktree (fzf if no arg) | `zsh/.zshrc.local:495` |
-| `wtp` | `wtp` | Prune empty worktree directories | `zsh/.zshrc.local:515` |
-| `wtg` | `wtg [name]` | `cd` to worktree (fzf if no arg) | `zsh/.zshrc.local:538` |
-| `wtb` | `wtb` | `cd` back to base / main repository | `zsh/.zshrc.local:558` |
-| `wtm` | `wtm [name]` | Merge worktree branch back into base | `zsh/.zshrc.local:564` |
-| `wtc` | `wtc <branch>` | Combo: add worktree + env init + launch AI agent | `zsh/.zshrc.local:601` |
+| `wtl` | `wtl` | List worktrees (alias of `git worktree list`) | `zsh/.zshrc.local:450` |
+| `wta` | `wta <branch>` | Add worktree at sibling `<repo>-worktrees/<branch>` | `zsh/.zshrc.local:454` |
+| `wtab` | `wtab` | Add worktree from fzf branch picker | `zsh/.zshrc.local:465` |
+| `wtr` | `wtr [name]` | Remove worktree (fzf if no arg) | `zsh/.zshrc.local:514` |
+| `wtp` | `wtp` | Prune empty worktree directories | `zsh/.zshrc.local:534` |
+| `wtg` | `wtg [name]` | `cd` to worktree (fzf if no arg) | `zsh/.zshrc.local:557` |
+| `wtb` | `wtb` | `cd` back to base / main repository | `zsh/.zshrc.local:577` |
+| `wtm` | `wtm [name]` | Merge worktree branch back into base | `zsh/.zshrc.local:583` |
+| `wtc` | `wtc <branch>` | Combo: add worktree + env init + launch AI agent | `zsh/.zshrc.local:620` |
 
 ## Brew (`b*` family)
 
 | Name | Command | Behavior | Definition |
 |------|---------|----------|------------|
-| `bip` | `bip` | Interactive brew install (search + fzf preview) | `zsh/.zshrc.local:39` |
-| `bup` | `bup` | Interactive brew upgrade picker | `zsh/.zshrc.local:55` |
-| `bcp` | `bcp` | Interactive brew uninstall picker | `zsh/.zshrc.local:71` |
-| `bci` | `bci` | Cask install with preview | `zsh/.zshrc.local:88` |
-| `bcui` | `bcui` | Cask uninstall with preview | `zsh/.zshrc.local:112` |
+| `bip` | `bip` | Interactive brew install (search + fzf preview) | `zsh/.zshrc.local:58` |
+| `bup` | `bup` | Interactive brew upgrade picker | `zsh/.zshrc.local:74` |
+| `bcp` | `bcp` | Interactive brew uninstall picker | `zsh/.zshrc.local:90` |
+| `bci` | `bci` | Cask install with preview | `zsh/.zshrc.local:107` |
+| `bcui` | `bcui` | Cask uninstall with preview | `zsh/.zshrc.local:131` |
 
 ## Git (`g*` family)
 
 | Name | Command | Behavior | Definition |
 |------|---------|----------|------------|
-| `gla` | `gla` | Interactive git log via fzf | `zsh/.zshrc.local:229` |
-| `gcob` | `gcob` | Checkout local branch via picker | `zsh/.zshrc.local:317` |
-| `gcorb` | `gcorb` | Checkout remote branch via picker | `zsh/.zshrc.local:337` |
-| `gdb` | `gdb` | Delete branch (safe) via picker | `zsh/.zshrc.local:272` |
-| `gdfb` | `gdfb` | Force-delete branch via picker | `zsh/.zshrc.local:294` |
+| `gla` | `gla` | Interactive git log via fzf | `zsh/.zshrc.local:248` |
+| `gcob` | `gcob` | Checkout local branch via picker | `zsh/.zshrc.local:336` |
+| `gcorb` | `gcorb` | Checkout remote branch via picker | `zsh/.zshrc.local:356` |
+| `gdb` | `gdb` | Delete branch (safe) via picker | `zsh/.zshrc.local:291` |
+| `gdfb` | `gdfb` | Force-delete branch via picker | `zsh/.zshrc.local:313` |
 
 ## File / system utilities
 
 | Name | Command | Behavior | Definition |
 |------|---------|----------|------------|
-| `fcd` | `fcd` | fzf-pick a subdirectory and `cd` into it | `zsh/.zshrc.local:135` |
-| `fcda` | `fcda` | Like `fcd` but includes hidden directories | `zsh/.zshrc.local:157` |
-| `rmtrash` | `rmtrash <path>` | Move file to macOS Trash instead of `rm` | `zsh/.zshrc.local:180` |
-| `untrash` | `untrash <name>` | Restore file from Trash | `zsh/.zshrc.local:184` |
-| `lg` | `lg` | Launch lazygit | `zsh/.zshrc.local:639` |
+| `fcd` | `fcd` | fzf-pick a subdirectory and `cd` into it | `zsh/.zshrc.local:154` |
+| `fcda` | `fcda` | Like `fcd` but includes hidden directories | `zsh/.zshrc.local:176` |
+| `rmtrash` | `rmtrash <path>` | Move file to macOS Trash instead of `rm` | `zsh/.zshrc.local:199` |
+| `untrash` | `untrash <name>` | Restore file from Trash | `zsh/.zshrc.local:203` |
+| `lg` | `lg` | Launch lazygit | `zsh/.zshrc.local:658` |
 
 ## Static aliases
 
 | Name | Maps to | Definition |
 |------|---------|------------|
-| `vim` / `vi` / `mvim` | `nvim` | `zsh/.zshrc.local:2-4` |
-| `rm` | `rm -i` with warning prefix | `zsh/.zshrc.local:6` |
+| `vim` / `vi` / `mvim` | `nvim` | `zsh/.zshrc.local:21-23` |
+| `rm` | `rm -i` with warning prefix | `zsh/.zshrc.local:25` |
+
+## Configuration variables
+
+| Name | Default | Behavior | Definition |
+|------|---------|----------|------------|
+| `DOT_PROJECT_ROOTS` | `($HOME/GitHub $HOME/Workspace)` | Root directories scanned by the `tsa` ctrl-n new-session dir picker. Override in `~/.zsh-machine.sh`. Non-existent roots are filtered; if none exist, falls back to `$HOME` | `zsh/.zshrc.local:18` |
+| `DOT_BRANCH_PREFIXES` | `(feature/ bugfix/ hotfix/ fix/ chore/ release/ refactor/)` | Branch-name prefixes stripped when deriving the agent task label | `zsh/.zshrc.local:15` |
+| `DOT_TSA_PENDING_FILE` | `$TMPDIR/tsa-delete-pending` | Path of the `tsa` ctrl-x two-step-delete state file | `zsh/.zshrc.local:11` |
+| `DOT_TSA_CONFIRM_SECS` | `2` | Seconds within which a second `ctrl-x` confirms the delete | `zsh/.zshrc.local:12` |
 
 ---
 
