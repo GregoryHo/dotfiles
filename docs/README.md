@@ -22,6 +22,12 @@ dotfiles/
 
 ## Technique Index
 
+### Quick Reference
+
+| # | Document | Summary |
+|---|----------|---------|
+| [14](14-command-reference.md) | Command Reference | Flat inventory of every function, alias, and tmux binding |
+
 ### Foundation
 
 | # | Technique | Summary |
@@ -93,3 +99,12 @@ dotfiles/
 Start with [01-stow-deployment](01-stow-deployment.md) and
 [02-shell-environment](02-shell-environment.md) — everything else builds on them.
 The agent system (docs 06-09) forms a cohesive subsystem best read together.
+
+For "what commands can I type right now?", jump straight to
+[14-command-reference](14-command-reference.md).
+
+## Maintenance
+
+See [CLAUDE.md](CLAUDE.md) for the contract on keeping docs in sync with
+`zsh/.zshrc.local` and `tmux/.tmux.conf.local`. Future Claude agents (and you)
+should read it before editing files in this folder.

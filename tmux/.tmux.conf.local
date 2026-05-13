@@ -451,19 +451,19 @@ bind-key -n M-l next-window
 
 # prefix + A/a: Anthropic (Claude)
 bind-key A run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; "$SHELL" -lic "dot_agent_window claude claude \"$p\""'
-bind-key a run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; tmux display-popup -E -w 80% -h 60% -d "$p" "$SHELL -lic \"dot_quick_ask claude\"" || true'
+bind-key a run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; tmux display-popup -E -e DOT_POPUP=1 -w 80% -h 60% -d "$p" "$SHELL -lic \"dot_quick_ask claude\"" || true'
 
 # prefix + O/o: OpenAI (Codex)
 bind-key O run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; "$SHELL" -lic "dot_agent_window codex codex \"$p\""'
-bind-key o run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; tmux display-popup -E -w 80% -h 60% -d "$p" "$SHELL -lic \"dot_quick_ask codex\"" || true'
+bind-key o run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; tmux display-popup -E -e DOT_POPUP=1 -w 80% -h 60% -d "$p" "$SHELL -lic \"dot_quick_ask codex\"" || true'
 
 # prefix + G/g: Google (Gemini)
 bind-key G run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; "$SHELL" -lic "dot_agent_window gemini gemini \"$p\""'
-bind-key g run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; tmux display-popup -E -w 80% -h 60% -d "$p" "$SHELL -lic \"dot_quick_ask gemini\"" || true'
+bind-key g run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; tmux display-popup -E -e DOT_POPUP=1 -w 80% -h 60% -d "$p" "$SHELL -lic \"dot_quick_ask gemini\"" || true'
 
 # prefix + L/l: Lazygit (lg)
 bind-key L run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; tmux new-window -n git -c "$p"; tmux set-option -w @project_path "$p"; tmux send-keys lg C-m'
-bind-key l run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; tmux display-popup -E -w 90% -h 85% -d "$p" "$SHELL -lic \"lg\"" || true'
+bind-key l run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; tmux display-popup -E -e DOT_POPUP=1 -w 90% -h 85% -d "$p" "$SHELL -lic \"lg\"" || true'
 
 # Continue mode (most recent session)
 # prefix + R then A/O/G
@@ -473,11 +473,11 @@ bind-key -T agent_continue A run-shell -b 'p="#{?@project_path,#{@project_path},
 bind-key -T agent_continue O run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; "$SHELL" -lic "dot_agent_window codex aoc \"$p\""'
 bind-key -T agent_continue G run-shell -b 'p="#{?@project_path,#{@project_path},#{pane_current_path}}"; "$SHELL" -lic "dot_agent_window gemini agc \"$p\""'
 
-# prefix + T: agent picker (compact popup)
-bind-key T run-shell -b 'tmux display-popup -E -w 80% -h 70% "$SHELL -lic \"tsa\""'
+# prefix + T: agent workspace — list active agents · ctrl-n to spawn new tmux session + agent
+bind-key T run-shell -b 'tmux display-popup -E -e DOT_POPUP=1 -w 80% -h 70% "$SHELL -lic \"tsa\""'
 
 # prefix + D: full agent dashboard (popup with preview, send, stop, kill)
-bind-key D run-shell -b 'tmux display-popup -E -w 80% -h 70% "$SHELL -lic \"tda\""'
+bind-key D run-shell -b 'tmux display-popup -E -e DOT_POPUP=1 -w 80% -h 70% "$SHELL -lic \"tda\""'
 
 # prefix + K: set agent task (prompts for name, starts duration timer)
 bind-key K command-prompt -p 'task>' 'set-option -w @agent_task "%1" ; run-shell -b "[ -z \"#{@agent_started_at}\" ] && tmux set-option -w @agent_started_at $(date +%s) || true"'

@@ -43,6 +43,7 @@ personal laptop) without maintaining separate branches.
 Tool     Base (tracked)             Override                      Tracked?  Loading Mechanism
 ─────    ──────────────             ────────                      ────────  ─────────────────
 Zsh      zsh/.zshrc                 zsh/.zshrc.local              YES       source at end of .zshrc
+Zsh      zsh/.zshrc.local           ~/.zsh-machine.sh             NO        source at top of .zshrc.local
 Bash     bash/.bash_profile         ~/.bash_profile.local         NO        source at end of .bash_profile
 Vim      vim/.vimrc                 vim/.vimrc.local              YES       source at end of .vimrc
 Vim      vim/.vimrc.bundles         vim/.vimrc.bundles.local      YES       source at end of .vimrc.bundles
