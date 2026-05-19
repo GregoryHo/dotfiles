@@ -40,14 +40,20 @@ zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
 zstyle ':fzf-tab:*' switch-group ',' '.'
 
 # fast-syntax-highlighting overrides (replaces ZSH_HIGHLIGHT_STYLES).
+# fast-sy-h loads via zsh-defer, so FAST_THEME_NAME isn't set yet at .zshrc
+# time. Defer overrides to the first precmd, then unhook.
 _dot_fsh_overrides() {
-  [[ -n ${FAST_THEME_NAME-} ]] || return 0
+  # FAST_THEME_NAME is empty by default; signal of "loaded" is the array existing.
+  (( ${+FAST_HIGHLIGHT_STYLES} )) || return 0
   local k
   for k in command alias builtin function precommand suffix-alias hashed-command; do
     FAST_HIGHLIGHT_STYLES[${FAST_THEME_NAME}${k}]='fg=blue,bold'
   done
+  autoload -Uz add-zsh-hook
+  add-zsh-hook -d precmd _dot_fsh_overrides
 }
-_dot_fsh_overrides
+autoload -Uz add-zsh-hook
+add-zsh-hook precmd _dot_fsh_overrides
 
 # Starship prompt.
 eval "$(starship init zsh)"
@@ -79,7 +85,7 @@ nvm() {
 }
 
 # tmux auto-start (replaces OMZ tmux plugin — only the autostart part).
-if [[ -z "$TMUX" && "${ZSH_TMUX_AUTOSTART:-true}" == "true" && "${ZSH_TMUX_AUTOSTARTED:-}" != "true" ]]; then
+if [[ -z "$TMUX" && "${ZSH_TMUX_AUTOSTART:-false}" == "true" && "${ZSH_TMUX_AUTOSTARTED:-}" != "true" ]]; then
   export ZSH_TMUX_AUTOSTARTED=true
   command tmux attach 2>/dev/null || command tmux new-session
 fi
