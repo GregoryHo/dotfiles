@@ -4,7 +4,12 @@ add_newline = true
 scan_timeout = 30
 command_timeout = 500
 
+palette = 'kanagawa_wave'
+
 format = """
+$username\
+$hostname\
+$shlvl\
 $directory\
 $git_branch\
 $git_status\
@@ -20,7 +25,21 @@ $direnv\
 $time\
 $battery"""
 
+[palettes.kanagawa_wave]
+bg     = '#1f1f28'
+fg     = '#dcd7ba'
+fg_dim = '#727169'
+blue   = '#7e9cd8'
+cyan   = '#7fb4ca'
+green  = '#76946a'
+yellow = '#c0a36e'
+orange = '#ffa066'
+red    = '#c34043'
+purple = '#957fb8'
+pink   = '#d27e99'
+
 [character]
+format = '╰─$symbol '
 success_symbol = '[❯](bold green)'
 error_symbol = '[❯](bold red)'
 vimcmd_symbol = '[❮](bold yellow)'
@@ -46,6 +65,24 @@ untracked = '?${count}'
 stashed = '*${count}'
 conflicted = '=${count}'
 
+[hostname]
+ssh_only = true
+format = '[@$hostname]($style) '
+style = 'bold green'
+
+[username]
+show_always = false
+format = '[$user]($style) '
+style_user = 'bold yellow'
+style_root = 'bold red'
+
+[shlvl]
+disabled = false
+threshold = 2
+symbol = '↕'
+format = '[$symbol$shlvl ]($style)'
+style = 'bold red'
+
 [status]
 disabled = false
 symbol = '✘'
@@ -70,8 +107,8 @@ style = 'bold orange'
 [time]
 disabled = false
 format = '[$time]($style) '
-time_format = '%H:%M:%S'
-style = 'white'
+time_format = '%H:%M'
+style = 'fg_dim'
 
 [battery]
 full_symbol = '󰁹 '
