@@ -46,9 +46,9 @@ path require explicit intent.
 │ non-repo             │   config.yml            │ in non-git directories       │
 │                      │   notARepository: quit  │                              │
 ├──────────────────────┼─────────────────────────┼──────────────────────────────┤
-│ Tmux auto-start      │ zsh/.zshrc              │ Every terminal joins tmux —  │
-│                      │   ZSH_TMUX_AUTOSTART=   │ sessions survive terminal    │
-│                      │   true                  │ close                        │
+│ Tmux auto-start opt- │ zsh/.zshrc              │ Default off; set             │
+│ in (default off)     │   ZSH_TMUX_AUTOSTART=   │ ZSH_TMUX_AUTOSTART=true to   │
+│                      │   false (default)       │ have new shells join tmux    │
 ├──────────────────────┼─────────────────────────┼──────────────────────────────┤
 │ Agent process        │ zsh/.zshrc.local        │ Quick-ask REPL kills all     │
 │ cleanup              │   trap cleanup EXIT     │ background agent processes   │

@@ -8,16 +8,21 @@ Personal dotfiles for a macOS (ARM) development environment. Each tool owns a di
 
 ## Deployment
 
-Uses GNU Stow. Each top-level directory is a stow package, symlinked relative to `$HOME`. For XDG configs, the `config/` package maps to `~/.config/`.
+Uses GNU Stow. Each top-level directory is a stow package. Most packages map into `$HOME` (so `zsh/.zshrc` → `~/.zshrc`); the `config/` package maps into `~/.config/` (so `config/alacritty/` → `~/.config/alacritty/`). The mapping requires `-t` on every invocation — see warning below.
 
 Stow packages: `bash/`, `config/`, `fzf/`, `git/`, `nvim/`, `shell/` (not stowed — sourced), `tmux/`, `vim/`, `zsh/`
 
+Some files inside a stow package are sourced from the absolute repo path instead of being symlinked to `$HOME` (e.g. `zsh/ghostty.zsh`). These are excluded from stow via `zsh/.stow-local-ignore` so `stow -R zsh` does not create spurious entries in `$HOME`.
+
 ```bash
-# Deploy all packages (from repo root)
-stow bash config fzf git nvim tmux vim zsh
+# Deploy all packages (from repo root). `-t` is REQUIRED — without it
+# stow places symlinks in the parent of the stow dir (~/GitHub/), not $HOME.
+cd ~/GitHub/dotfiles
+stow -t "$HOME"         bash fzf git nvim tmux vim zsh
+stow -t "$HOME/.config" config
 
 # Re-deploy a single package (adopt existing files)
-stow -R zsh
+stow -R -t "$HOME" zsh
 ```
 
 ## Validation
@@ -49,7 +54,7 @@ This ensures both login and non-login shells (zsh and bash) get the same environ
 
 1. `shell/.env.shared.sh` - exports and bootstrap only, no aliases/functions
 2. `zsh/.zprofile` / `bash/.bash_profile` - login-shell init (version managers, local overrides)
-3. `zsh/.zshrc` / `bash/.bashrc` - interactive config (Oh My Zsh, FZF, lazy loading, aliases)
+3. `zsh/.zshrc` / `bash/.bashrc` - interactive config (Antidote, Starship, FZF, lazy loading, aliases)
 4. `zsh/.zshrc.local` / `bash/.bash_profile.local` - machine-specific (gitignored)
 
 ### Rules When Editing Shell Files
@@ -121,14 +126,16 @@ Helper functions that produce picker rows are prefixed `dot_` (e.g., `dot_git_lo
 
 ## Zsh Interactive Config
 
-- Theme: Powerlevel10k with battery, time, dir, vcs (left) and execution time, jobs, ram, load (right)
-- Oh My Zsh plugins: `git`, `docker`, `kubectl`, `minikube`, `react-native`, `zsh-syntax-highlighting`, `tmux` (auto-start enabled)
-- FZF trigger sequence is `~~` (not default `**`); source is `fd --type f`
-- `vim`/`vi`/`mvim` are all aliased to `nvim`
+- Prompt: **Starship** (`brew install starship`). Config lives in `config/starship.toml` (stowed to `~/.config/starship.toml`). Initialized via `eval "$(starship init zsh)"` in `.zshrc`. No instant-prompt equivalent — Starship is fast enough that one isn't needed.
+- Plugin manager: **Antidote** (`brew install antidote`). Bundle list in `zsh/.zsh_plugins.txt` (stowed to `~/.zsh_plugins.txt`). Sourced from `/opt/homebrew/share/antidote/antidote.zsh`. Order matters: completion providers first, `fzf-tab`, then `fast-syntax-highlighting` (`kind:defer`, loads last).
+- Plugins loaded: `ohmyzsh/{git,kubectl}` (full, for aliases), `ohmyzsh/{docker,react-native}` (`kind:fpath`, completions only), `Aloxaf/fzf-tab`, `zdharma-continuum/fast-syntax-highlighting`. `minikube` is lazy-loaded in `.zshrc.local`.
+- Syntax highlighter is **fast-syntax-highlighting**; style overrides go into `FAST_HIGHLIGHT_STYLES[${FAST_THEME_NAME}<key>]` (not the old `ZSH_HIGHLIGHT_STYLES`). See `_dot_fsh_overrides` in `.zshrc`.
+- FZF trigger sequence is `~~` (not default `**`); source is `fd --type f`. `fzf-tab` zstyles configured after `antidote load`.
+- `vim`/`vi`/`mvim` are all aliased to `nvim`.
 
 ## NVM Lazy Loading
 
-In zsh, `nvm`/`node`/`npm`/`npx` are stub functions that self-replace on first call by inlining `. "$NVM_DIR/nvm.sh"`. The Oh My Zsh nvm/node/npm plugins are disabled in favor of this. The `load-nvmrc` chpwd hook auto-switches node versions based on `.nvmrc` files.
+In zsh, `nvm` is a stub function that self-replaces on first call by inlining `. "$NVM_DIR/nvm.sh"`. `PATH`/`NVM_BIN`/`MANPATH` for the default node version are set eagerly so `node`/`npm`/`npx` work immediately without sourcing `nvm.sh`. We don't bundle OMZ's `nvm`/`node`/`npm` plugins via Antidote — they would eagerly source `nvm.sh` and undo this. The `load-nvmrc` chpwd hook auto-switches node versions based on `.nvmrc` files.
 
 Global packages that should persist across Node versions are listed in `nvm-default-packages` (symlinked to `~/.nvm/default-packages`). NVM auto-installs these on every `nvm install`. Edit this file when adding/removing persistent global tools.
 
@@ -168,5 +175,6 @@ Global packages that should persist across Node versions are listed in `nvm-defa
 - **GVM is intentionally disabled** in `zsh/.zshrc` — it caused `cd` slowdown. Don't re-enable without testing.
 - **Lazygit has force-push disabled** (`disableForcePushing: true` in `config/lazygit/config.yml`) — this is intentional safety.
 - **OrbStack shell integration** is sourced in `zsh/.zprofile` — don't remove without checking container workflows.
-- **Tmux auto-start is on** (`ZSH_TMUX_AUTOSTART=true` in `zsh/.zshrc`) — every new zsh terminal joins tmux.
+- **Tmux auto-start defaults off** in `zsh/.zshrc` (`ZSH_TMUX_AUTOSTART:-false`). To opt in for a shell: `ZSH_TMUX_AUTOSTART=true zsh`. The autostart is a 4-line inline block (`zsh/.zshrc`) that replaced the OMZ `tmux` plugin during the Antidote migration.
+- **Stow needs `-t` always.** Running `stow <pkg>` from `~/GitHub/dotfiles` without `-t` puts symlinks in `~/GitHub/` (stow's default target is the parent of the stow dir), not `$HOME`. Always use `stow -t "$HOME" <pkg>` or `stow -t "$HOME/.config" config`. The existing `~/.zshrc` etc. were originally created by hand (mixed relative/absolute targets) so the wrong invocation appears to "work" — but a fresh deploy on a new machine needs `-t`.
 - **`rm` is aliased to `rm -i`** in `zsh/.zshrc.local` — interactive confirmation by default.

@@ -69,8 +69,8 @@ dotfiles/
 │         │                                                        │
 │         ▼                                                        │
 │  ┌──────────────┐    ┌────────────────────────────────────┐     │
-│  │  Oh My Zsh    │    │  .local overrides (gitignored)     │     │
-│  │  + Plugins    │    │  Secrets, machine-specific config   │     │
+│  │  Antidote     │    │  .local overrides (gitignored)     │     │
+│  │  + Starship   │    │  Secrets, machine-specific config   │     │
 │  └──────┬───────┘    └────────────────────────────────────┘     │
 │         │                                                        │
 │         ▼                                                        │

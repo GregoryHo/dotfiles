@@ -46,6 +46,15 @@ if command -v direnv >/dev/null 2>&1; then
   eval "$(direnv hook zsh)"
 fi
 
+# minikube completion lazy-load (saves ~25ms startup; first invocation pays the cost)
+if command -v minikube >/dev/null 2>&1; then
+  minikube() {
+    unfunction minikube
+    source <(command minikube completion zsh)
+    minikube "$@"
+  }
+fi
+
 # Homebrew
 # Shared fzf UI defaults for shell pickers
 dot_fzf_ui() {
