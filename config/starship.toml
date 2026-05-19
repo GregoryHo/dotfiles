@@ -9,11 +9,14 @@ palette = 'kanagawa_wave'
 format = """
 $username\
 $hostname\
+$sudo\
 $shlvl\
+$docker_context\
 $directory\
 $git_branch\
-$git_status\
+$git_commit\
 $git_state\
+$git_status\
 $line_break\
 $character"""
 
@@ -22,7 +25,8 @@ $status\
 $cmd_duration\
 $jobs\
 $direnv\
-$time\
+$container\
+$memory_usage\
 $battery"""
 
 [palettes.kanagawa_wave]
@@ -83,6 +87,16 @@ symbol = '↕'
 format = '[$symbol$shlvl ]($style)'
 style = 'bold red'
 
+[sudo]
+disabled = false
+symbol = ' '
+style = 'bold red'
+format = '[$symbol]($style)'
+
+[git_commit]
+style = 'bold yellow'
+tag_disabled = false
+
 [status]
 disabled = false
 symbol = '✘'
@@ -104,11 +118,16 @@ disabled = false
 format = '[direnv $loaded/$allowed]($style) '
 style = 'bold orange'
 
-[time]
+[container]
+format = '[$symbol \[$name\]]($style) '
+style = 'bold orange'
+
+[memory_usage]
 disabled = false
-format = '[$time]($style) '
-time_format = '%H:%M'
-style = 'fg_dim'
+threshold = -1
+symbol = '󰍛 '
+style = 'bold yellow'
+format = '[$symbol$ram( | $swap)]($style) '
 
 [battery]
 full_symbol = '󰁹 '
@@ -122,6 +141,10 @@ style = 'bold red'
 [[battery.display]]
 threshold = 50
 style = 'yellow'
+
+[[battery.display]]
+threshold = 100
+style = 'green'
 
 # Disable noisy default modules that p10k never showed.
 [aws]
@@ -137,7 +160,11 @@ disabled = true
 disabled = true
 
 [docker_context]
-disabled = true
+disabled = false
+only_with_files = true
+symbol = ' '
+style = 'bold cyan'
+format = '[$symbol$context]($style) '
 
 [package]
 disabled = true
