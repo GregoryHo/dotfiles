@@ -39,10 +39,10 @@ purple = '#957fb8'
 pink   = '#d27e99'
 
 [character]
-format = '╰─$symbol '
-success_symbol = '[❯](bold green)'
-error_symbol = '[❯](bold red)'
-vimcmd_symbol = '[❮](bold yellow)'
+format = '[╰──](fg_dim)$symbol '
+success_symbol = '[▹](#5d7060)[▹](#76946a)[▹](bold #98bb6c)'
+error_symbol = '[▹](#7a3a3c)[▹](#c34043)[▹](bold #e46876)'
+vimcmd_symbol = '[◃](bold #dca561)[◃](#c0a36e)[◃](#7a6a48)'
 
 [directory]
 truncation_length = 3
