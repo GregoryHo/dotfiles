@@ -1,0 +1,6 @@
+# Files in this package are sourced from absolute repo path by .zshrc,
+# not symlinked into $HOME. Listing them here keeps `stow -R zsh` from
+# creating spurious entries like ~/.p10k.zsh, ~/ghostty.zsh, ~/wifi-segment.zsh.
+ghostty\.zsh
+wifi-segment\.zsh
+\.p10k\.zsh

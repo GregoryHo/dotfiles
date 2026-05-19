@@ -12,6 +12,8 @@ Uses GNU Stow. Each top-level directory is a stow package, symlinked relative to
 
 Stow packages: `bash/`, `config/`, `fzf/`, `git/`, `nvim/`, `shell/` (not stowed — sourced), `tmux/`, `vim/`, `zsh/`
 
+Some files inside a stow package are sourced from the absolute repo path instead of being symlinked to `$HOME` (e.g. `zsh/ghostty.zsh`, `zsh/wifi-segment.zsh`, `zsh/.p10k.zsh`). These are excluded from stow via `zsh/.stow-local-ignore` so `stow -R zsh` does not create spurious entries in `$HOME`.
+
 ```bash
 # Deploy all packages (from repo root)
 stow bash config fzf git nvim tmux vim zsh
@@ -121,8 +123,9 @@ Helper functions that produce picker rows are prefixed `dot_` (e.g., `dot_git_lo
 
 ## Zsh Interactive Config
 
-- Theme: Powerlevel10k with battery, time, dir, vcs (left) and execution time, jobs, ram, load (right)
-- Oh My Zsh plugins: `git`, `docker`, `kubectl`, `minikube`, `react-native`, `zsh-syntax-highlighting`, `tmux` (auto-start enabled)
+- Prompt: Powerlevel10k. Segments and styles live in `zsh/.p10k.zsh` (derived from the upstream `p10k-lean` template). `.zshrc` sources it via absolute repo path; `p10k configure` will overwrite that file in-place.
+- Instant prompt enabled at the top of `zsh/.zshrc` (cached prompt renders before plugins finish loading).
+- Oh My Zsh plugins: `git`, `docker`, `kubectl`, `react-native`, `zsh-syntax-highlighting`, `tmux` (auto-start enabled). `minikube` is lazy-loaded in `.zshrc.local`.
 - FZF trigger sequence is `~~` (not default `**`); source is `fd --type f`
 - `vim`/`vi`/`mvim` are all aliased to `nvim`
 
