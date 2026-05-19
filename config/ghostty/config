@@ -3,12 +3,13 @@
 
 # --- Font ---
 font-family = JetBrainsMono Nerd Font Mono
+font-family = "Sarasa Mono TC Regular"
 font-style = Medium
 font-style-bold = Bold
 font-style-italic = Italic
 font-style-bold-italic = Bold Italic
 font-size = 15
-font-thicken = false
+font-thicken = true
 
 # --- Window ---
 window-padding-x = 10

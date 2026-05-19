@@ -1,8 +1,13 @@
+# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+# Initialization code that may require console input (password prompts, [y/n]
+# confirmations, etc.) must go above this block; everything else may go below.
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
 # OPENSPEC:START
-# OpenSpec shell completions configuration
+# OpenSpec shell completions configuration — fpath only; Oh My Zsh runs compinit later.
 fpath=("/Users/gregho/.oh-my-zsh/custom/completions" $fpath)
-autoload -Uz compinit
-compinit
 # OPENSPEC:END
 
 # Locale safety for Nerd Font/powerline symbols.
@@ -23,134 +28,6 @@ export ZSH=/Users/gregho/.oh-my-zsh
 # it'll load a random theme each time that oh-my-zsh is loaded.
 # See https://github.com/robbyrussell/oh-my-zsh/wiki/Themes
 ZSH_THEME="powerlevel10k/powerlevel10k"
-# BASE
-# ===========================================================
-POWERLEVEL9K_MODE='nerdfont-complete'
-POWERLEVEL9K_PROMPT_ON_NEWLINE=true
-
-# LEFT_PROMPT
-# ===========================================================
-POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=('battery' 'time' 'root_indicator' 'dir' 'dir_writable_joined' 'vcs')
-POWERLEVEL9K_LEFT_SEGMENT_SEPARATOR='>'
-POWERLEVEL9K_LEFT_SUBSEGMENT_SEPARATOR='>'
-POWERLEVEL9K_WHITESPACE_BETWEEN_LEFT_SEGMENTS=' '
-# POWERLEVEL9K_MULTILINE_FIRST_PROMPT_PREFIX="%F{blue}\u256D\u2500%F{white}"
-POWERLEVEL9K_MULTILINE_FIRST_PROMPT_PREFIX="%F{014}\u256D%F{cyan}\u2500%F{white}"
-# POWERLEVEL9K_MULTILINE_LAST_PROMPT_PREFIX="%F{blue}\u2570\uf460%F{white} "
-POWERLEVEL9K_MULTILINE_LAST_PROMPT_PREFIX="%F{014}\u2570%F{cyan}\uF460%F{073}\uF460%F{109}\uF460%F{white} "
-
-# battery
-POWERLEVEL9K_BATTERY_LOW_BACKGROUND='none'
-POWERLEVEL9K_BATTERY_LOW_FOREGROUND='001'
-POWERLEVEL9K_BATTERY_CHARGING_BACKGROUND='none'
-POWERLEVEL9K_BATTERY_CHARGING_FOREGROUND='076'
-POWERLEVEL9K_BATTERY_CHARGED_BACKGROUND='none'
-POWERLEVEL9K_BATTERY_CHARGED_FOREGROUND='076'
-POWERLEVEL9K_BATTERY_DISCONNECTED_BACKGROUND='none'
-POWERLEVEL9K_BATTERY_DISCONNECTED_FOREGROUND='003'
-POWERLEVEL9K_BATTERY_LOW_THRESHOLD=30
-POWERLEVEL9K_BATTERY_VERBOSE=false
-POWERLEVEL9K_BATTERY_STAGES=('.' ':' '|' '||' '|||')
-
-# time
-# POWERLEVEL9K_TIME_FORMAT="%D{%H:%M} %F{003}\uF017"
-# POWERLEVEL9K_TIME_FORMAT="%F{cyan}\uF017 %F{007}%D{%y/%m/%d %H:%M:%S}"
-# POWERLEVEL9K_TIME_ICON=''
-POWERLEVEL9K_TIME_FORMAT="%D{%H:%M \uf073 %d/%m/%y}"
-POWERLEVEL9K_TIME_BACKGROUND='none'
-POWERLEVEL9K_TIME_FOREGROUND='cyan'
-
-# root
-POWERLEVEL9K_ROOT_INDICATOR_BACKGROUND="red"
-POWERLEVEL9K_ROOT_INDICATOR_FOREGROUND="white"
-
-# dir
-POWERLEVEL9K_SHORTEN_DELIMITER=''
-POWERLEVEL9K_SHORTEN_DIR_LENGTH=7
-# POWERLEVEL9K_SHORTEN_STRATEGY='truncate_to_first_and_last'
-# POWERLEVEL9K_SHORTEN_STRATEGY="truncate_middle"
-POWERLEVEL9K_DIR_HOME_BACKGROUND="clear"
-POWERLEVEL9K_DIR_HOME_FOREGROUND="blue"
-POWERLEVEL9K_DIR_HOME_SUBFOLDER_BACKGROUND="clear"
-POWERLEVEL9K_DIR_HOME_SUBFOLDER_FOREGROUND="blue"
-POWERLEVEL9K_DIR_WRITABLE_FORBIDDEN_BACKGROUND="clear"
-POWERLEVEL9K_DIR_WRITABLE_FORBIDDEN_FOREGROUND="red"
-POWERLEVEL9K_DIR_DEFAULT_BACKGROUND="clear"
-POWERLEVEL9K_DIR_DEFAULT_FOREGROUND="white"
-
-# vcs
-POWERLEVEL9K_SHOW_CHANGESET=true
-POWERLEVEL9K_CHANGESET_HASH_LENGTH=6
-POWERLEVEL9K_VCS_CLEAN_BACKGROUND='none'
-POWERLEVEL9K_VCS_CLEAN_FOREGROUND='076'
-POWERLEVEL9K_VCS_UNTRACKED_BACKGROUND='none'
-POWERLEVEL9K_VCS_UNTRACKED_FOREGROUND='005'
-POWERLEVEL9K_VCS_MODIFIED_BACKGROUND='none'
-POWERLEVEL9K_VCS_MODIFIED_FOREGROUND='003'
-# POWERLEVEL9K_VCS_GIT_HOOKS=(vcs-detect-changes git-untracked git-aheadbehind git-remotebranch git-tagname)
-
-# RIGHT_PROMP
-# ===========================================================
-POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=('command_execution_time' 'background_jobs_joined' 'custom_wifi_signal' 'ram' 'load') 
-# POWERLEVEL9K_RIGHT_SEGMENT_SEPARATOR=$'\uE0B2'
-POWERLEVEL9K_RIGHT_SEGMENT_SEPARATOR=' <'
-POWERLEVEL9K_RIGHT_SUBSEGMENT_SEPARATOR=' <'
-POWERLEVEL9K_WHITESPACE_BETWEEN_RIGHT_SEGMENTS=' '
-
-# command execution time
-POWERLEVEL9K_COMMAND_EXECUTION_TIME_BACKGROUND='clear'
-POWERLEVEL9K_COMMAND_EXECUTION_TIME_FOREGROUND='magenta'
-
-# background job 
-POWERLEVEL9K_BACKGROUND_JOBS_BACKGROUND='clear'
-POWERLEVEL9K_BACKGROUND_JOBS_FOREGROUND='green'
-
-# wifi
-POWERLEVEL9K_CUSTOM_WIFI_SIGNAL="zsh_wifi_signal"
-POWERLEVEL9K_CUSTOM_WIFI_SIGNAL_BACKGROUND="clear"
-# macOS 26 removed the `airport` CLI; use CoreWLAN via osascript (no sudo).
-zsh_wifi_signal(){
-        local info=$(/usr/bin/osascript <<'AS' 2>/dev/null
-use framework "CoreWLAN"
-set i to (current application's CWWiFiClient's sharedWiFiClient()'s interface())
-set p to (i's powerOn()) as text
-set r to (i's transmitRate()) as text
-return p & "|" & r
-AS
-)
-        local power=${info%%|*}
-        local speed=${info##*|}
-        speed=${speed%.*}
-
-        if [ "$power" != "true" ]; then
-                local color='%F{007}'
-                echo -n "%{$color%}Wifi Off"
-        else
-                local valueColor='%F{007}'
-                local signColor='%F{green}'
-
-                [[ $speed -lt 50 ]] && signColor='%F{red}'
-
-                echo -n "%{$valueColor%}$speed Mbps %{$signColor%}\uf1eb%{%f%}"
-        fi
-}
-
-# ram
-POWERLEVEL9K_RAM_BACKGROUND="none"
-POWERLEVEL9K_RAM_FOREGROUND="007"
-POWERLEVEL9K_RAM_VISUAL_IDENTIFIER_COLOR="001"
-POWERLEVEL9K_RAM_ELEMENTS=(ram_free)
-
-# load
-POWERLEVEL9K_LOAD_CRITICAL_BACKGROUND="none"
-POWERLEVEL9K_LOAD_WARNING_BACKGROUND="none"
-POWERLEVEL9K_LOAD_NORMAL_BACKGROUND="black"
-POWERLEVEL9K_LOAD_CRITICAL_FOREGROUND="007"
-POWERLEVEL9K_LOAD_WARNING_FOREGROUND="007"
-POWERLEVEL9K_LOAD_NORMAL_FOREGROUND="007"
-POWERLEVEL9K_LOAD_CRITICAL_VISUAL_IDENTIFIER_COLOR="red"
-POWERLEVEL9K_LOAD_WARNING_VISUAL_IDENTIFIER_COLOR="yellow"
-POWERLEVEL9K_LOAD_NORMAL_VISUAL_IDENTIFIER_COLOR="green"
 
 # disable share histoary
 unsetopt share_history
@@ -219,8 +96,8 @@ plugins=(
   docker
   git
   # nvm, node, npm - using lazy loading
+  # minikube - lazy-loaded in .zshrc.local
   kubectl
-  minikube
   tmux
   react-native
 )
@@ -228,6 +105,10 @@ plugins=(
 # zsh-completions
 
 source $ZSH/oh-my-zsh.sh
+
+# OMZ termsupport registers omz_termsupport_precmd twice — dedupe.
+precmd_functions=("${(@u)precmd_functions}")
+preexec_functions=("${(@u)preexec_functions}")
 
 # User configuration
 
@@ -392,3 +273,8 @@ fpath=(/Users/gregho/.docker/completions $fpath)
 
 # bun completions
 [ -s "/Users/gregho/.bun/_bun" ] && source "/Users/gregho/.bun/_bun"
+
+# Powerlevel10k config (segments + styles). Tracked in dotfiles repo.
+# Wifi custom segment lives in zsh/wifi-segment.zsh — sourced only if enabled.
+[ -f "$HOME/GitHub/dotfiles/zsh/.p10k.zsh" ] && source "$HOME/GitHub/dotfiles/zsh/.p10k.zsh"
+# [ -f "$HOME/GitHub/dotfiles/zsh/wifi-segment.zsh" ] && source "$HOME/GitHub/dotfiles/zsh/wifi-segment.zsh"
