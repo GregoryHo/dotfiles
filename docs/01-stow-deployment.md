@@ -63,18 +63,27 @@ dotfiles/                        $HOME
     └── (you are here)           │
 ```
 
-### The `config/` Package Trick
+### The `config/` Package Needs a Different Target
 
-The `config/` directory maps to `~/.config/` because Stow preserves directory
-structure relative to the target. With `-t $HOME`, the `config/` directory
-inside the package creates symlinks at the right XDG path:
+The `config/` package is the one exception in the layout: it does **not** map
+into `$HOME`, it maps into `$HOME/.config/`. Stow does not preserve the
+`config/` directory level for you — it strips the package's top level and
+places each child at the target. So `-t $HOME` would put `~/alacritty`,
+`~/lazygit`, `~/starship.toml`, etc. directly in `$HOME` (wrong).
+
+The correct invocation passes `$HOME/.config` as the target:
 
 ```
-dotfiles/config/lazygit/  ──stow -t $HOME──▶  ~/.config/lazygit/  (directory symlink)
+stow -t "$HOME/.config" config
+
+dotfiles/config/alacritty/   ──▶  ~/.config/alacritty/   (directory symlink)
+dotfiles/config/lazygit/     ──▶  ~/.config/lazygit/     (directory symlink)
+dotfiles/config/starship.toml ──▶ ~/.config/starship.toml (file symlink)
 ```
 
-This means lazygit and tmux-powerline configs are **directory symlinks**, not
-individual file symlinks. Editing any file inside edits the repo copy directly.
+Directory entries (`alacritty/`, `lazygit/`, `tmux-powerline/`) become
+**directory symlinks**, so editing any file inside edits the repo copy
+directly. File entries (`starship.toml`) become individual file symlinks.
 
 ### Manual Symlinks
 
@@ -105,14 +114,17 @@ config file. Stowing it would create `~/.env.shared.sh`, which is misleading.
 ## Commands
 
 ```bash
-# Deploy all stow packages (from repo root, targeting $HOME)
-stow -t $HOME bash config fzf git tmux vim zsh
+# Deploy all stow packages (from repo root). `config` needs a different
+# target from the rest because XDG configs live in ~/.config, not ~.
+stow -t "$HOME"         bash fzf git tmux vim zsh
+stow -t "$HOME/.config" config
 
 # Re-deploy a single package (unstow + stow, fixes stale symlinks)
-stow -t $HOME -R zsh
+stow -t "$HOME" -R zsh
+stow -t "$HOME/.config" -R config
 
 # Dry run (preview what would be symlinked)
-stow -t $HOME -n -v zsh
+stow -t "$HOME" -n -v zsh
 
 # Manual symlinks (not stow-managed)
 ln -s ~/GitHub/dotfiles/nvim ~/.config/nvim

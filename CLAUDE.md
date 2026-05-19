@@ -8,18 +8,21 @@ Personal dotfiles for a macOS (ARM) development environment. Each tool owns a di
 
 ## Deployment
 
-Uses GNU Stow. Each top-level directory is a stow package, symlinked relative to `$HOME`. For XDG configs, the `config/` package maps to `~/.config/`.
+Uses GNU Stow. Each top-level directory is a stow package. Most packages map into `$HOME` (so `zsh/.zshrc` → `~/.zshrc`); the `config/` package maps into `~/.config/` (so `config/alacritty/` → `~/.config/alacritty/`). The mapping requires `-t` on every invocation — see warning below.
 
 Stow packages: `bash/`, `config/`, `fzf/`, `git/`, `nvim/`, `shell/` (not stowed — sourced), `tmux/`, `vim/`, `zsh/`
 
 Some files inside a stow package are sourced from the absolute repo path instead of being symlinked to `$HOME` (e.g. `zsh/ghostty.zsh`). These are excluded from stow via `zsh/.stow-local-ignore` so `stow -R zsh` does not create spurious entries in `$HOME`.
 
 ```bash
-# Deploy all packages (from repo root)
-stow bash config fzf git nvim tmux vim zsh
+# Deploy all packages (from repo root). `-t` is REQUIRED — without it
+# stow places symlinks in the parent of the stow dir (~/GitHub/), not $HOME.
+cd ~/GitHub/dotfiles
+stow -t "$HOME"         bash fzf git nvim tmux vim zsh
+stow -t "$HOME/.config" config
 
 # Re-deploy a single package (adopt existing files)
-stow -R zsh
+stow -R -t "$HOME" zsh
 ```
 
 ## Validation
@@ -173,4 +176,5 @@ Global packages that should persist across Node versions are listed in `nvm-defa
 - **Lazygit has force-push disabled** (`disableForcePushing: true` in `config/lazygit/config.yml`) — this is intentional safety.
 - **OrbStack shell integration** is sourced in `zsh/.zprofile` — don't remove without checking container workflows.
 - **Tmux auto-start defaults off** in `zsh/.zshrc` (`ZSH_TMUX_AUTOSTART:-false`). To opt in for a shell: `ZSH_TMUX_AUTOSTART=true zsh`. The autostart is a 4-line inline block (`zsh/.zshrc`) that replaced the OMZ `tmux` plugin during the Antidote migration.
+- **Stow needs `-t` always.** Running `stow <pkg>` from `~/GitHub/dotfiles` without `-t` puts symlinks in `~/GitHub/` (stow's default target is the parent of the stow dir), not `$HOME`. Always use `stow -t "$HOME" <pkg>` or `stow -t "$HOME/.config" config`. The existing `~/.zshrc` etc. were originally created by hand (mixed relative/absolute targets) so the wrong invocation appears to "work" — but a fresh deploy on a new machine needs `-t`.
 - **`rm` is aliased to `rm -i`** in `zsh/.zshrc.local` — interactive confirmation by default.
