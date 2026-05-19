@@ -108,22 +108,30 @@ POWERLEVEL9K_BACKGROUND_JOBS_FOREGROUND='green'
 # wifi
 POWERLEVEL9K_CUSTOM_WIFI_SIGNAL="zsh_wifi_signal"
 POWERLEVEL9K_CUSTOM_WIFI_SIGNAL_BACKGROUND="clear"
+# macOS 26 removed the `airport` CLI; use CoreWLAN via osascript (no sudo).
 zsh_wifi_signal(){
-        local output=$(/System/Library/PrivateFrameworks/Apple80211.framework/Versions/A/Resources/airport -I)
-        local airport=$(echo $output | grep 'AirPort' | awk -F': ' '{print $2}')
+        local info=$(/usr/bin/osascript <<'AS' 2>/dev/null
+use framework "CoreWLAN"
+set i to (current application's CWWiFiClient's sharedWiFiClient()'s interface())
+set p to (i's powerOn()) as text
+set r to (i's transmitRate()) as text
+return p & "|" & r
+AS
+)
+        local power=${info%%|*}
+        local speed=${info##*|}
+        speed=${speed%.*}
 
-        if [ "$airport" = "Off" ]; then
+        if [ "$power" != "true" ]; then
                 local color='%F{007}'
                 echo -n "%{$color%}Wifi Off"
         else
-                local ssid=$(echo $output | grep ' SSID' | awk -F': ' '{print $2}')
-                local speed=$(echo $output | grep 'lastTxRate' | awk -F': ' '{print $2}')
                 local valueColor='%F{007}'
                 local signColor='%F{green}'
 
                 [[ $speed -lt 50 ]] && signColor='%F{red}'
 
-                echo -n "%{$valueColor%}$speed Mbps %{$signColor%}\uf1eb%{%f%}" # removed char not in my PowerLine font
+                echo -n "%{$valueColor%}$speed Mbps %{$signColor%}\uf1eb%{%f%}"
         fi
 }
 
