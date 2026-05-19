@@ -96,17 +96,19 @@ NVM reads this file on every `nvm install` and auto-installs the listed
 packages. This ensures tools like `mgrep`, `prettier`, etc. survive Node
 version changes.
 
-### Oh My Zsh Integration
+### Antidote Bundle Choice
 
-The Oh My Zsh `nvm`, `node`, and `npm` plugins are **intentionally disabled**:
+The OMZ `nvm`, `node`, and `npm` plugins are **intentionally not bundled** via
+Antidote:
 
-```bash
-plugins=(git docker kubectl ... tmux react-native zsh-syntax-highlighting)
-#        ^^^ no nvm, node, or npm plugins
+```
+# zsh/.zsh_plugins.txt — note the absence of any nvm/node/npm bundles
+ohmyzsh/ohmyzsh path:plugins/git
+ohmyzsh/ohmyzsh path:plugins/kubectl
+...
 ```
 
-These plugins would interfere with the custom lazy loading by eagerly sourcing
-`nvm.sh`.
+Those plugins would eagerly source `nvm.sh` and undo the lazy-loading scheme.
 
 ## Performance Impact
 

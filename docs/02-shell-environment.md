@@ -101,7 +101,10 @@ The existence check (`[ -f ... ]`) prevents errors if the repo isn't cloned yet.
 
 2.  zsh/.zshrc
     ├── source shell/.env.shared.sh    ◀── guard returns immediately
-    ├── Oh My Zsh setup + plugins
+    ├── compinit
+    ├── antidote load                  ◀── reads ~/.zsh_plugins.txt
+    ├── fzf-tab + fast-syntax-highlighting style overrides
+    ├── starship init                  ◀── prompt
     ├── NVM lazy loading (see doc 04)
     ├── FZF configuration
     └── source ~/.zshrc.local          ◀── local overrides (gitignored)

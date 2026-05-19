@@ -89,7 +89,7 @@ In this repo, `tmux/.tmux.conf.local` IS the customization file.
 ```
 Tracked base files                Tracked .local files             Gitignored home-level .local
 ──────────────────                ────────────────────             ────────────────────────────
-Oh My Zsh plugins list            Aliases & shell functions        API tokens, secrets
+Antidote plugin list              Aliases & shell functions        API tokens, secrets
 FZF trigger/source config         FZF picker definitions           Corporate git identity
 Git delta pager settings          Agent dashboard functions         Machine-specific PATHs
 Tmux keybindings                  Custom vim settings              Proxy/VPN settings
