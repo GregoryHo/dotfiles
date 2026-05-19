@@ -82,4 +82,32 @@ zsh -f -c "
   [[ \"\${DOTFILES_ENV_SHARED_LOADED:-}\" == \"1\" ]]
 "
 
+printf '5) Validate stow deployment (symlinks in $HOME)...\n'
+check_symlink() {
+  local target="$1"
+  local hint="$2"
+  if [[ ! -L "$target" ]]; then
+    echo "Missing symlink: $target" >&2
+    echo "  Run: cd \"$ROOT_DIR\" && stow $hint" >&2
+    return 1
+  fi
+  if [[ ! -e "$target" ]]; then
+    local broken
+    broken="$(readlink "$target")"
+    echo "Broken symlink: $target -> $broken" >&2
+    echo "  Run: cd \"$ROOT_DIR\" && stow -R $hint" >&2
+    return 1
+  fi
+  return 0
+}
+
+deployment_ok=0
+check_symlink "$HOME/.zprofile"        zsh  || deployment_ok=1
+check_symlink "$HOME/.zshrc"           zsh  || deployment_ok=1
+check_symlink "$HOME/.zshrc.local"     zsh  || deployment_ok=1
+check_symlink "$HOME/.bash_profile"    bash || deployment_ok=1
+check_symlink "$HOME/.bashrc"          bash || deployment_ok=1
+check_symlink "$HOME/.tmux.conf.local" tmux || deployment_ok=1
+[[ $deployment_ok -eq 0 ]] || exit 1
+
 echo "All shell startup checks passed."
