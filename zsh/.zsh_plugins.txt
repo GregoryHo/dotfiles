@@ -1,16 +1,14 @@
 # Antidote bundle list. Loaded by `antidote load` in .zshrc.
-# Order matters: completion providers -> fzf-tab -> syntax highlighter (last).
+#
+# Aliases are owned by the user (see ~/.zshrc.local) — no opinionated alias
+# packs from upstream. OMZ-derived bundles here are completion providers only.
 
-# OMZ-derived bundles. We cherry-pick directories instead of loading the whole
-# framework; `kind:fpath` adds completions without sourcing init code.
-ohmyzsh/ohmyzsh path:lib/git.zsh             kind:fpath
-ohmyzsh/ohmyzsh path:plugins/git
+# fpath-only providers — cheap, load eagerly.
 ohmyzsh/ohmyzsh path:plugins/docker          kind:fpath
-ohmyzsh/ohmyzsh path:plugins/kubectl
 ohmyzsh/ohmyzsh path:plugins/react-native    kind:fpath
 
-# Completion UI: must load AFTER compinit, BEFORE the syntax highlighter.
-Aloxaf/fzf-tab
+# Completion UI — defer to first idle.
+Aloxaf/fzf-tab                                kind:defer
 
 # Syntax highlighter LAST. `kind:defer` per upstream recommendation.
 zdharma-continuum/fast-syntax-highlighting kind:defer
