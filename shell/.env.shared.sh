@@ -52,8 +52,7 @@ export PATH="$HOME/.opencode/bin:$PATH"
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
-# Antigravity
-export PATH="$HOME/.antigravity/antigravity/bin:$PATH"
+# Antigravity IDE
 export PATH="$HOME/.antigravity-ide/antigravity-ide/bin:$PATH"
 
 # Obsidian CLI
