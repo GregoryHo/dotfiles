@@ -54,6 +54,7 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 
 # Antigravity
 export PATH="$HOME/.antigravity/antigravity/bin:$PATH"
+export PATH="$HOME/.antigravity-ide/antigravity-ide/bin:$PATH"
 
 # Obsidian CLI
 export PATH="$PATH:/Applications/Obsidian.app/Contents/MacOS"
