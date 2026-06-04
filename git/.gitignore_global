@@ -21,3 +21,5 @@ Desktop.ini
 
 # Merge
 *.orig
+
+**/.claude/settings.local.json
