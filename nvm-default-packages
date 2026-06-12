@@ -1,6 +1,7 @@
 @google/gemini-cli
 @mixedbread/mgrep
 @fission-ai/openspec
+@earendil-works/pi-coding-agent
 agent-browser
 ccusage
 pnpm

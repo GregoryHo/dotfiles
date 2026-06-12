@@ -45,6 +45,16 @@ see the technique docs (`01-*.md` through `13-*.md`).
 
 > Non-continue (fresh) agent launches happen via tmux bindings `prefix+A/O/G`, not via standalone shell functions.
 
+## AI agent — Claude behavior modes
+
+| Name | Command | Behavior | Definition |
+|------|---------|----------|------------|
+| `cc-dev` | `cc-dev [args]` | Launch Claude appending the **dev** behavior context; if the context file is missing, launches plain with a hint | `zsh/.zshrc.local:1700` |
+| `cc-research` | `cc-research [args]` | Same, appending the **research** context | `zsh/.zshrc.local:1701` |
+| `cc-review` | `cc-review [args]` | Same, appending the **review** context | `zsh/.zshrc.local:1702` |
+
+> Behavior contexts live in `~/.claude/contexts/<mode>.md` (not tracked in this repo; `cc-*` degrade gracefully if absent — append is skipped and a hint is shown). Shared helper `_dot_cc_ctx` at `zsh/.zshrc.local:1691`.
+
 ## Tmux key bindings (after `prefix` = `C-a`)
 
 | Keys | Behavior | Definition |
@@ -113,6 +123,7 @@ see the technique docs (`01-*.md` through `13-*.md`).
 |------|---------|------------|
 | `vim` / `vi` / `mvim` | `nvim` | `zsh/.zshrc.local:21-23` |
 | `rm` | `rm -i` with warning prefix | `zsh/.zshrc.local:25` |
+| `claude` | `command claude --allow-dangerously-skip-permissions` — makes bypass mode selectable via Shift+Tab (still starts in `default`). Use `command claude` for vanilla | `zsh/.zshrc.local:1685` |
 
 ## Configuration variables
 
