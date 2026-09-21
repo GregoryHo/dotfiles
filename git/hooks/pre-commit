@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+#
+# Blocks a commit that adds credential-shaped text.
+#
+# Only added lines are scanned, so pre-existing content never blocks a commit.
+# Matches are reported by file, line and pattern name — the matched value is
+# never printed, because hook output lands in scrollback and CI logs.
+#
+# Activate in a fresh clone (core.hooksPath lives in .git/config, untracked):
+#
+#   git config core.hooksPath git/hooks
+#
+# Deliberate override: git commit --no-verify
+#
+# Test against an arbitrary diff without touching the index:
+#
+#   git diff HEAD~1 | git/hooks/pre-commit --diff-from-stdin
+
+set -euo pipefail
+
+# name<TAB>extended regex. A value is credential-shaped either because it
+# carries a known issuer prefix, or because a secret-named variable is assigned
+# a long literal — the case a prefix list cannot see.
+PATTERNS=(
+  $'openai-style-key\tsk-[A-Za-z0-9_-]{16,}'
+  $'github-token\tgh[pousr]_[A-Za-z0-9]{20,}'
+  $'github-pat\tgithub_pat_[A-Za-z0-9_]{20,}'
+  $'slack-token\txox[baprs]-[A-Za-z0-9-]{10,}'
+  $'aws-access-key\tAKIA[0-9A-Z]{16}'
+  $'notion-token\tntn_[A-Za-z0-9]{20,}'
+  $'google-api-key\tAIza[A-Za-z0-9_-]{30,}'
+  $'private-key-block\t-----BEGIN [A-Z ]*PRIVATE KEY-----'
+  $'secret-assignment\t[A-Za-z_][A-Za-z0-9_]*(TOKEN|SECRET|PASSWORD|API_KEY|CREDENTIAL)[A-Za-z0-9_]*"?[[:space:]]*[=:][[:space:]]*[\'"][^\'"$`]{16,}[\'"]'
+)
+
+# Flatten a unified diff to file<TAB>line<TAB>added-content, resolving each
+# added line to its line number in the new file via the hunk headers.
+added_lines() {
+  awk '
+    /^\+\+\+ / {
+      file = substr($0, 5)
+      # Strip the diff prefix. diff.mnemonicPrefix replaces b/ with i/ or w/,
+      # so accept the whole set rather than b/ alone.
+      sub(/^[abciow]\//, "", file)
+      next
+    }
+    /^@@ / {
+      match($0, /\+[0-9]+/)
+      line = substr($0, RSTART + 1, RLENGTH - 1) + 0
+      next
+    }
+    /^\+/ {
+      print file "\t" line "\t" substr($0, 2)
+      line++
+      next
+    }
+    /^[ ]/ { line++ }
+  '
+}
+
+if [ "${1:-}" = "--diff-from-stdin" ]; then
+  candidates=$(added_lines)
+else
+  # No --diff-filter: a rename-with-edit reports as R and would be skipped,
+  # taking its added lines with it.
+  candidates=$(git diff --cached -U0 | added_lines)
+fi
+
+[ -n "$candidates" ] || exit 0
+
+found=0
+for entry in "${PATTERNS[@]}"; do
+  name=${entry%%$'\t'*}
+  regex=${entry#*$'\t'}
+
+  # -e is required: several patterns start with a dash.
+  set +e
+  matches=$(printf '%s\n' "$candidates" | grep -E -e "$regex")
+  status=$?
+  set -e
+  # grep exits 1 for "no match" and >1 for a real failure. A pattern that
+  # cannot run must not be mistaken for a clean scan.
+  if [ "$status" -gt 1 ]; then
+    echo "pre-commit: pattern '$name' failed to run (grep exit $status)" >&2
+    exit 2
+  fi
+  [ "$status" -eq 0 ] || continue
+
+  # Cut to file and line before printing: the matched text stays unprinted.
+  while IFS=$'\t' read -r file line _; do
+    [ -n "$file" ] || continue
+    if [ "$found" -eq 0 ]; then
+      echo "Commit blocked: credential-shaped text in added lines." >&2
+      echo >&2
+      found=1
+    fi
+    echo "  $file:$line  matches $name" >&2
+  done <<< "$matches"
+done
+
+if [ "$found" -eq 1 ]; then
+  echo >&2
+  echo "Move the value to ~/.zsh-machine.sh, which lives outside every repository." >&2
+  echo "If this is a false positive: git commit --no-verify" >&2
+  exit 1
+fi
+
+exit 0

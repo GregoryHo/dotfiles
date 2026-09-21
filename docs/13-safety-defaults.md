@@ -57,6 +57,10 @@ path require explicit intent.
 │ Scrollback cleanup   │ tmux/.tmux.conf.local   │ Temp files auto-deleted      │
 │                      │   trap "rm -f ..." EXIT │ after Neovim scrollback      │
 │                      │                         │ viewer closes                │
+├──────────────────────┼─────────────────────────┼──────────────────────────────┤
+│ Secret scan on       │ git/hooks/pre-commit    │ Blocks credential-shaped     │
+│ commit               │   core.hooksPath =      │ text in added lines before   │
+│                      │   git/hooks             │ it reaches a public repo     │
 └──────────────────────┴─────────────────────────┴──────────────────────────────┘
 ```
 
