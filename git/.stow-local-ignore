@@ -1,0 +1,3 @@
+# Repo-local git hooks, wired up with core.hooksPath.
+# Not a dotfile — must not be symlinked into $HOME.
+hooks
